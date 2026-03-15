@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A1714"/>
+      <stop offset="50%" stop-color="#110E0C"/>
+      <stop offset="100%" stop-color="#0C0A09"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E7E1D8"/>
+      <stop offset="100%" stop-color="#C4956A"/>
+    </linearGradient>
+    <linearGradient id="pageL" x1="1" y1="0" x2="0" y2="0.2">
+      <stop offset="0%" stop-color="#D4CBC0" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#D4CBC0" stop-opacity="0.03"/>
+    </linearGradient>
+    <linearGradient id="pageR" x1="0" y1="0" x2="1" y2="0.2">
+      <stop offset="0%" stop-color="#D4CBC0" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#D4CBC0" stop-opacity="0.03"/>
+    </linearGradient>
+    <linearGradient id="coverL" x1="1" y1="0" x2="0" y2="0.4">
+      <stop offset="0%" stop-color="#C4956A" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#8B6840" stop-opacity="0.06"/>
+    </linearGradient>
+    <linearGradient id="coverR" x1="0" y1="0" x2="1" y2="0.4">
+      <stop offset="0%" stop-color="#C4956A" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#8B6840" stop-opacity="0.06"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.5">
+      <stop offset="0%" stop-color="#C4956A" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#C4956A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Achtergrond -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#glow)"/>
+  
+  <!-- Decoratieve cirkel -->
+  <circle cx="512" cy="420" r="240" fill="none" stroke="#C4956A" stroke-width="1" opacity="0.1"/>
+  <circle cx="512" cy="420" r="200" fill="none" stroke="#C4956A" stroke-width="1" opacity="0.06"/>
+  
+  <!-- ===== KRUIS ===== -->
+  <g transform="translate(512, 350)">
+    <rect x="-4" y="-190" width="8" height="340" rx="4" fill="url(#accent)"/>
+    <rect x="-100" y="-65" width="200" height="8" rx="4" fill="url(#accent)"/>
+    <circle cx="0" cy="-61" r="6" fill="url(#accent)" opacity="0.4"/>
+  </g>
+  
+  <!-- ===== OPEN BIJBEL — hoger dan breed ===== -->
+  <g transform="translate(512, 620)">
+    
+    <!-- Kaft links - smal en lang -->
+    <path d="M-8 -75 C-8 -75 -110 -88 -130 -68 L-135 80 C-112 62 -8 75 -8 75 Z" 
+          fill="url(#coverL)" stroke="#C4956A" stroke-width="2" stroke-linejoin="round"/>
+    
+    <!-- Kaft rechts -->
+    <path d="M8 -75 C8 -75 110 -88 130 -68 L135 80 C112 62 8 75 8 75 Z" 
+          fill="url(#coverR)" stroke="#C4956A" stroke-width="2" stroke-linejoin="round"/>
+    
+    <!-- Pagina's links -->
+    <path d="M-6 -67 C-6 -67 -98 -78 -118 -60 L-122 70 C-100 54 -6 65 -6 65 Z" 
+          fill="url(#pageL)" stroke="#D4CBC0" stroke-width="0.7" stroke-linejoin="round" opacity="0.5"/>
+    
+    <!-- Pagina's rechts -->
+    <path d="M6 -67 C6 -67 98 -78 118 -60 L122 70 C100 54 6 65 6 65 Z" 
+          fill="url(#pageR)" stroke="#D4CBC0" stroke-width="0.7" stroke-linejoin="round" opacity="0.5"/>
+    
+    <!-- Pagina-dikte links -->
+    <path d="M-122 70 L-125 74 C-103 58 -6 69 -6 69" fill="none" stroke="#C4956A" stroke-width="0.5" opacity="0.12"/>
+    <path d="M-125 74 L-128 77 C-106 61 -6 72 -6 72" fill="none" stroke="#C4956A" stroke-width="0.4" opacity="0.08"/>
+    
+    <!-- Pagina-dikte rechts -->
+    <path d="M122 70 L125 74 C103 58 6 69 6 69" fill="none" stroke="#C4956A" stroke-width="0.5" opacity="0.12"/>
+    <path d="M125 74 L128 77 C106 61 6 72 6 72" fill="none" stroke="#C4956A" stroke-width="0.4" opacity="0.08"/>
+    
+    <!-- Rug -->
+    <path d="M0 -77 L0 77" stroke="#C4956A" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+    <line x1="-2" y1="-55" x2="2" y2="-55" stroke="#C4956A" stroke-width="0.8" opacity="0.2"/>
+    <line x1="-2" y1="-25" x2="2" y2="-25" stroke="#C4956A" stroke-width="0.8" opacity="0.2"/>
+    <line x1="-2" y1="5" x2="2" y2="5" stroke="#C4956A" stroke-width="0.8" opacity="0.2"/>
+    <line x1="-2" y1="35" x2="2" y2="35" stroke="#C4956A" stroke-width="0.8" opacity="0.2"/>
+    <line x1="-2" y1="60" x2="2" y2="60" stroke="#C4956A" stroke-width="0.8" opacity="0.2"/>
+    
+    <!-- Tekstregels links -->
+    <line x1="-90" y1="-48" x2="-22" y2="-44" stroke="#D4CBC0" stroke-width="0.8" opacity="0.13"/>
+    <line x1="-95" y1="-35" x2="-20" y2="-32" stroke="#D4CBC0" stroke-width="0.8" opacity="0.13"/>
+    <line x1="-100" y1="-22" x2="-18" y2="-20" stroke="#D4CBC0" stroke-width="0.8" opacity="0.11"/>
+    <line x1="-103" y1="-9" x2="-17" y2="-8" stroke="#D4CBC0" stroke-width="0.8" opacity="0.11"/>
+    <line x1="-105" y1="4" x2="-16" y2="4" stroke="#D4CBC0" stroke-width="0.8" opacity="0.09"/>
+    <line x1="-107" y1="17" x2="-15" y2="16" stroke="#D4CBC0" stroke-width="0.8" opacity="0.09"/>
+    <line x1="-108" y1="30" x2="-14" y2="28" stroke="#D4CBC0" stroke-width="0.8" opacity="0.07"/>
+    <line x1="-109" y1="43" x2="-30" y2="41" stroke="#D4CBC0" stroke-width="0.8" opacity="0.07"/>
+    <line x1="-109" y1="56" x2="-45" y2="54" stroke="#D4CBC0" stroke-width="0.8" opacity="0.06"/>
+    
+    <!-- Tekstregels rechts -->
+    <line x1="22" y1="-44" x2="90" y2="-48" stroke="#D4CBC0" stroke-width="0.8" opacity="0.13"/>
+    <line x1="20" y1="-32" x2="95" y2="-35" stroke="#D4CBC0" stroke-width="0.8" opacity="0.13"/>
+    <line x1="18" y1="-20" x2="100" y2="-22" stroke="#D4CBC0" stroke-width="0.8" opacity="0.11"/>
+    <line x1="17" y1="-8" x2="103" y2="-9" stroke="#D4CBC0" stroke-width="0.8" opacity="0.11"/>
+    <line x1="16" y1="4" x2="105" y2="4" stroke="#D4CBC0" stroke-width="0.8" opacity="0.09"/>
+    <line x1="15" y1="16" x2="107" y2="17" stroke="#D4CBC0" stroke-width="0.8" opacity="0.09"/>
+    <line x1="14" y1="28" x2="108" y2="30" stroke="#D4CBC0" stroke-width="0.8" opacity="0.07"/>
+    <line x1="30" y1="41" x2="109" y2="43" stroke="#D4CBC0" stroke-width="0.8" opacity="0.07"/>
+    <line x1="45" y1="54" x2="109" y2="56" stroke="#D4CBC0" stroke-width="0.8" opacity="0.06"/>
+    
+    <!-- Leeslint -->
+    <path d="M1 -77 Q12 -10 6 77 Q4 92 10 102" fill="none" stroke="#8B3030" stroke-width="1.8" opacity="0.35" stroke-linecap="round"/>
+  </g>
+  
+  <!-- ===== TEKST ===== -->
+  <text x="512" y="830" text-anchor="middle" fill="#C4956A" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="400" letter-spacing="10" opacity="0.85">SCHRIFT</text>
+  <text x="512" y="880" text-anchor="middle" fill="#E7E1D8" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="400" letter-spacing="14" opacity="0.5">INZICHT</text>
+  
+  <line x1="350" y1="796" x2="674" y2="796" stroke="#C4956A" stroke-width="0.5" opacity="0.15"/>
+  <line x1="375" y1="896" x2="649" y2="896" stroke="#C4956A" stroke-width="0.5" opacity="0.12"/>
+</svg>
