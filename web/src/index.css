@@ -4867,6 +4867,112 @@ body {
 
 .premium-gate-btn:hover { opacity: 0.85; }
 
+/* Premium gate — blur + CTA wrapper */
+.premium-gate-wrapper { position: relative; }
+.premium-gate-blur-container { position: relative; }
+.premium-gate-blur-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, var(--bg) 85%);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  border-radius: 12px;
+}
+.premium-gate-cta {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: center;
+  padding: var(--sp-lg);
+  z-index: 2;
+}
+.premium-gate-cta .premium-gate-btn {
+  font-size: 16px;
+  padding: 12px 32px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(196,149,106,0.3);
+}
+
+/* Premium modal */
+.premium-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: var(--sp-md);
+}
+.premium-modal {
+  background: var(--sheet-bg);
+  border: 1px solid var(--sheet-border);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.premium-modal-close {
+  position: absolute; top: 12px; right: 16px;
+  background: none; border: none;
+  color: var(--text-faint); font-size: 18px;
+  cursor: pointer; padding: 4px;
+  transition: color 0.15s;
+}
+.premium-modal-close:hover { color: var(--text); }
+
+.premium-modal-header { text-align: center; margin-bottom: 24px; }
+.premium-modal-icon { color: var(--accent); margin-bottom: 12px; }
+.premium-modal-title {
+  font-family: var(--font-serif);
+  font-size: 22px; font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.premium-modal-desc {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 14px; line-height: 1.6;
+}
+.premium-modal-error {
+  color: var(--error);
+  text-align: center;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  margin-bottom: var(--sp-sm);
+}
+.premium-modal-btn-primary {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none; border-radius: 10px;
+  padding: 14px 20px;
+  font-size: 15px; font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-bottom: 10px;
+}
+.premium-modal-btn-primary:hover { opacity: 0.9; }
+.premium-modal-btn-primary:disabled { opacity: 0.5; cursor: wait; }
+.premium-modal-btn-sub {
+  font-size: 12px; font-weight: 400;
+  opacity: 0.8; margin-top: 2px;
+}
+.premium-modal-btn-secondary {
+  display: block; width: 100%;
+  background: var(--surface);
+  color: var(--text-sec);
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 14px; font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.premium-modal-btn-secondary:hover { background: var(--surface-hover); }
+.premium-modal-btn-secondary:disabled { opacity: 0.5; cursor: wait; }
+
 /* ── Install Prompt ──────────────────────────── */
 .install-prompt { display: flex; align-items: center; justify-content: center; gap: var(--sp-sm); padding: 10px var(--sp-md); background: rgba(196,149,106,0.1); border-bottom: 1px solid rgba(196,149,106,0.2); font-family: var(--font-sans); font-size: 13px; color: var(--accent); }
 .install-prompt-btn { background: var(--accent); color: var(--bg); border: none; border-radius: 6px; padding: 4px 12px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--font-sans); }

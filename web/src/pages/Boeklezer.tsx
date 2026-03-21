@@ -303,8 +303,11 @@ export default function Boeklezer() {
       setAuthor(authorRes.data as AuthorInfo);
       const works = (sourceRes.data || []) as SourceWork[];
       setSourceWorks(works);
+      // Pre-select via ?werk= query param, else default to NL work
+      const werkParam = searchParams.get('werk');
+      const preSelected = werkParam ? works.find(w => w.id === werkParam) : null;
       const nlWork = works.find(w => w.language_orig === 'nl');
-      setSelectedSource(nlWork?.id || works[0]?.id || null);
+      setSelectedSource(preSelected?.id || nlWork?.id || works[0]?.id || null);
     }).catch(() => setError('Kon gegevens niet laden.'));
   }, [authorId]);
 

@@ -78,22 +78,26 @@ export default function PremiumGate({ children, message, feature = 'Deze inhoud'
         <div className="premium-modal-backdrop" onClick={() => setModalOpen(false)}>
           <div className="premium-modal" onClick={e => e.stopPropagation()}>
             <button className="premium-modal-close" onClick={() => setModalOpen(false)}>✕</button>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>💎</div>
-              <h2 style={{ margin: '0 0 8px' }}>SchriftInzicht Premium</h2>
-              <p style={{ margin: 0, color: '#666', lineHeight: 1.5 }}>
+            <div className="premium-modal-header">
+              <div className="premium-modal-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </svg>
+              </div>
+              <h2 className="premium-modal-title">SchriftInzicht Premium</h2>
+              <p className="premium-modal-desc">
                 {message || 'Ontgrendel alle verklaringen, preken en bijbelcommentaren van de oudvaders.'}
               </p>
             </div>
 
-            {error && <p style={{ color: '#e53e3e', textAlign: 'center', fontSize: 13 }}>{error}</p>}
+            {error && <p className="premium-modal-error">{error}</p>}
 
             <button
               className="premium-modal-btn-primary"
               onClick={() => createCheckout('yearly')}
               disabled={checkoutLoading}
             >
-              Ontgrendel alle verklaringen — €34,99/jaar
+              Ontgrendel alles — €34,99/jaar
               <span className="premium-modal-btn-sub">Bespaar 42%</span>
             </button>
 

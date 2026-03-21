@@ -19,13 +19,21 @@ interface SermonPreview {
   source_collection: string | null;
 }
 
-/** Normalize title: strip leading numbering, fix casing */
+/** Normalize title: strip leading numbering, fix casing, detect reference-style titles */
 function cleanTitle(t: string): string {
   // Remove leading "1. ", "2) " etc.
   let s = t.replace(/^\d+[\.\)]\s*/, '');
   // If entire string is UPPER CASE, convert to Title Case
   if (s.length > 5 && s === s.toUpperCase()) {
     s = s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+  // If title looks like a structured reference (mostly roman numerals, commas, semicolons)
+  // e.g. "CHRISTUS, I, xi, 17; III, IV, 8; V, ix, ..."
+  // Try to extract the first meaningful word as a short label
+  const refPattern = /^([A-Z][a-zA-Z]+),?\s+[IVXivx]+[\s,;]/;
+  const match = s.match(refPattern);
+  if (match && s.split(/[;,]/).length > 3) {
+    return match[1] + ' (verwijzingen)';
   }
   return s;
 }
@@ -153,7 +161,7 @@ export default function Oudvaders() {
                             {authorWorks.map(w => (
                               <Link
                                 key={w.id}
-                                to={`/boeklezer/${a.id}`}
+                                to={`/boeklezer/${a.id}?werk=${w.id}`}
                                 className="ov-work-item"
                               >
                                 <span className="ov-work-title">{w.title}</span>
