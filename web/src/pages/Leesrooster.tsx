@@ -201,9 +201,8 @@ export default function Leesrooster() {
             return (
               <div key={i} className={`lr-day-card${done ? ' done' : ''}${isExpanded ? ' expanded' : ''}`}>
                 <div className="lr-day-top" onClick={() => setExpandedDay(isExpanded ? -1 : i)}>
-                  <button className="lr-checkbox" onClick={(e) => { e.stopPropagation(); toggleProgress(i); }}>
-                    {done ? '\u2611' : '\u2610'}
-                  </button>
+                  <button className="lr-checkbox" onClick={(e) => { e.stopPropagation(); toggleProgress(i); }}
+                    aria-label={done ? 'Gelezen' : 'Markeer als gelezen'} />
                   <div className="lr-day-info">
                     <span className="lr-day-name">{DAYS[i]}</span>
                     <span className="lr-reading-ref">{reading.book} {reading.chapter}:{verseRange}</span>
@@ -238,9 +237,9 @@ export default function Leesrooster() {
           })}
         </div>
 
-        {/* Jaaroverzicht mini */}
+        {/* Jaaroverzicht */}
         <div className="lr-year-overview">
-          <div className="lr-year-label">Jaaroverzicht</div>
+          <div className="lr-year-label">Jaaroverzicht — klik op een week</div>
           <div className="lr-year-grid">
             {thematicPlan.map(w => {
               const wDone = w.readings.every((_, i) => progress[`${w.week}-${i}`]);
@@ -251,10 +250,15 @@ export default function Leesrooster() {
                 <button
                   key={w.week}
                   className={`lr-year-dot${wDone ? ' done' : wPartial ? ' partial' : ''}${isCurrent ? ' current' : ''}`}
-                  style={{ backgroundColor: wDone ? color : undefined, borderColor: isCurrent ? color : undefined }}
+                  style={{
+                    backgroundColor: wDone ? color : `${color}18`,
+                    borderColor: isCurrent ? color : wPartial ? `${color}60` : 'transparent',
+                  }}
                   onClick={() => setWeekNum(w.week)}
-                  title={`Week ${w.week}: ${w.theme}`}
-                />
+                  title={`Week ${w.week}: ${w.theme} (${w.season})`}
+                >
+                  {w.week}
+                </button>
               );
             })}
           </div>
