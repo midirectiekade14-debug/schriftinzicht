@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { displayBookName } from '../lib/parseReference';
@@ -45,6 +45,7 @@ export default function Preek() {
   const [currentPage, setCurrentPage] = useState(0);
   const [prevSermon, setPrevSermon] = useState<SiblingSermon | null>(null);
   const [nextSermon, setNextSermon] = useState<SiblingSermon | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -109,7 +110,7 @@ export default function Preek() {
   const goPage = (p: number) => {
     if (p >= 0 && p < totalPages) {
       setCurrentPage(p);
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      pageRef.current?.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
 
@@ -150,12 +151,12 @@ export default function Preek() {
         <span className="back-link" onClick={() => window.history.back()}>&lsaquo; Terug</span>
         <h1>{authorName}</h1>
       </div>
-      <div className="page">
+      <div className="page" ref={pageRef}>
         <div className="bijbel-page">
           {/* Page header */}
           <div className="bl-page-head">
             <span className="bl-head-rule" />
-            <span className="bl-head-title">{authorName}</span>
+            <span className="bl-head-title">{sermon.source_collection || cleanTitle(sermon.title)}</span>
             <span className="bl-head-rule" />
           </div>
 
