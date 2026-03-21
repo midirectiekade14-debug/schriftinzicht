@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 # ─── Book name mapping (shared with parse_all_docx.py) ──────────────────────
 BOOK_MAP = {}

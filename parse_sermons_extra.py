@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 # ─── Reuse book map from parse_sermons.py ────────────────────────────────────
 BOOK_MAP = {}

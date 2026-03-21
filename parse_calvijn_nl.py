@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 # Book abbreviation -> Dutch name (matching bible_books.json)
 BOOK_MAP = {
@@ -137,7 +137,7 @@ def parse_chapter_verse(text, book_name, default_chapter=None):
                     "chapter": current_chapter,
                     "verse": current_verse,
                     "verse_end": None,
-                    "text": t[:8000]
+                    "text": t
                 })
 
     for line in lines:
@@ -205,7 +205,7 @@ def parse_inline_refs(text, expected_book=None):
                     "chapter": ch,
                     "verse": vs,
                     "verse_end": None,
-                    "text": t[:8000]
+                    "text": t
                 })
 
     for para in paragraphs:

@@ -7,7 +7,7 @@ Output: individual JSON files per author
 import requests, json, os, re, time
 from bs4 import BeautifulSoup
 
-BASE = os.path.join(os.path.expanduser("~"), "schriftinzicht")
+BASE = os.path.dirname(os.path.abspath(__file__))
 SESSION = requests.Session()
 SESSION.headers.update({
     "User-Agent": "Mozilla/5.0 (SchriftInzicht/1.0; educational theological research)"
@@ -173,7 +173,7 @@ def scrape_studylight_commentary(code, name, author_id, dutch_books_map):
                                 "chapter": chapter,
                                 "verse": verse_num,
                                 "verse_end": None,
-                                "text": verse_text[:5000]
+                                "text": verse_text
                             })
 
                 time.sleep(0.3)

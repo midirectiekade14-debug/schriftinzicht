@@ -6,7 +6,7 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stdout.reconfigure(line_buffering=True)
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 # Pattern: chapter:verse at start of line (Da Costa style: "1:1", "1:2", "12:10" etc.)
 VERSE_START_RE = re.compile(r'^(\d{1,3})\s*[:.]\s*(\d{1,3})\b')
@@ -73,7 +73,7 @@ def parse_dacosta_text(text, default_book="Genesis"):
                     'chapter': current_chapter,
                     'verse': current_verse,
                     'verse_end': None,
-                    'text': body[:8000]
+                    'text': body
                 })
 
     for line in lines:

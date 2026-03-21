@@ -9,7 +9,7 @@ import requests
 
 load_dotenv(os.path.join(os.path.expanduser("~"), "schriftinzicht", ".env"))
 
-BASE = os.path.join(os.path.expanduser("~"), "schriftinzicht")
+BASE = os.path.dirname(os.path.abspath(__file__))
 AUTHOR_ID = 7  # Smijtegelt
 
 URL = os.getenv("SUPABASE_URL") + "/rest/v1"

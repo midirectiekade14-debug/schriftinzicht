@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 BASE_URL = "https://onlinebijbelverklaring.nl/maartenluther/galaten/galaten{}/"
 
 HEADERS = {
@@ -69,7 +69,7 @@ for chapter in range(1, 7):
                     'chapter': chapter,
                     'verse': verse_num,
                     'verse_end': verse_end,
-                    'text': body[:8000]
+                    'text': body
                 })
 
         time.sleep(0.5)

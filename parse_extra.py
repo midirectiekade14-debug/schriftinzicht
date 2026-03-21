@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 # ─── Book mapping (compact) ─────────────────────────────────────────────────
 BOOK_MAP = {}
@@ -106,7 +106,7 @@ def parse_sermon_docx(path):
         end = sermons[si+1][0] if si+1 < len(sermons) else len(paras)
         body = '\n'.join(paras[j][1] for j in range(pos, min(end, len(paras))))
         if len(body) > 100:
-            entries.append({"book": ref[0], "chapter": ref[1], "verse": ref[2], "verse_end": None, "text": body[:8000]})
+            entries.append({"book": ref[0], "chapter": ref[1], "verse": ref[2], "verse_end": None, "text": body})
     return entries
 
 def parse_verse_commentary(path):
@@ -118,7 +118,7 @@ def parse_verse_commentary(path):
         if current_ref and body:
             text = '\n'.join(body).strip()
             if len(text) > 30:
-                entries.append({"book": current_ref[0], "chapter": current_ref[1], "verse": current_ref[2], "verse_end": None, "text": text[:8000]})
+                entries.append({"book": current_ref[0], "chapter": current_ref[1], "verse": current_ref[2], "verse_end": None, "text": text})
     for style, text in paras:
         ref = find_ref(text)
         is_heading = style in ('Heading 1', 'Heading 2', 'Heading 3', 'Heading 4')

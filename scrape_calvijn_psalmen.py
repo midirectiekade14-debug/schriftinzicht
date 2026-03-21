@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -45,7 +45,7 @@ for line in lines:
                     'chapter': current_psalm,
                     'verse': 1,
                     'verse_end': None,
-                    'text': body[:8000]
+                    'text': body
                 })
         current_psalm = int(m.group(1))
         body_parts = [stripped]
@@ -61,7 +61,7 @@ if current_psalm and body_parts:
             'chapter': current_psalm,
             'verse': 1,
             'verse_end': None,
-            'text': body[:8000]
+            'text': body
         })
 
 print(f"Found {len(entries)} Calvijn Psalm entries")

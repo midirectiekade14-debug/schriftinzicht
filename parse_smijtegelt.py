@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 BOOK_MAP = {
     "gen": "Genesis", "genesis": "Genesis", "ex": "Exodus", "exodus": "Exodus",
@@ -212,7 +212,7 @@ for si, (pos, num, ref) in enumerate(sermon_positions):
             "chapter": ch,
             "verse": vs,
             "verse_end": None,
-            "text": body[:8000]
+            "text": body
         })
 
 print(f"\nTotal entries: {len(entries)}")

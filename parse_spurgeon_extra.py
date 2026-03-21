@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 BOOK_MAP = {}
 for keys, val in [
@@ -84,7 +84,7 @@ for fp in files:
             if len(body) > 100:
                 file_entries.append({
                     'book': ref[0], 'chapter': ref[1], 'verse': ref[2],
-                    'verse_end': None, 'text': body[:8000]
+                    'verse_end': None, 'text': body
                 })
 
         if len(file_entries) < 3:
@@ -98,7 +98,7 @@ for fp in files:
                         file_entries.append({
                             'book': current_ref[0], 'chapter': current_ref[1],
                             'verse': current_ref[2], 'verse_end': None,
-                            'text': text[:8000]
+                            'text': text
                         })
 
             for style, text in paras:

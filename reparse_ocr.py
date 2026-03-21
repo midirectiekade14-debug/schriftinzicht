@@ -9,7 +9,7 @@ from collections import Counter
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 BOOK_MAP = {
     "genesis": "Genesis",
@@ -127,7 +127,7 @@ def parse_raw_text(filepath, default_book=None):
                     "chapter": current_chapter,
                     "verse": current_verse,
                     "verse_end": None,
-                    "text": t[:8000]
+                    "text": t
                 })
         body = []
 

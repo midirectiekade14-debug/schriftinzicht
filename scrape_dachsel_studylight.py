@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 
 # StudyLight book slugs -> Dutch book names (matching bible_books.json)
 BOOKS = [
@@ -133,10 +133,6 @@ def scrape_chapter(slug, dutch_name, chapter):
             # Skip very short or empty
             if len(text) < 20:
                 continue
-
-            # Cap at 8000 chars
-            if len(text) > 8000:
-                text = text[:8000] + "..."
 
             entries.append({
                 "book": dutch_name,

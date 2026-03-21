@@ -19,7 +19,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-BASE = Path("C:/Users/midir/schriftinzicht")
+BASE = Path(__file__).parent
 NL_DIR = BASE / "calvijn_nl"
 PROGRESS_FILE = BASE / "ocr_calvijn_progress.json"
 
@@ -152,7 +152,7 @@ def parse_ocr_pages(pages, default_book=None):
                     "chapter": current_chapter,
                     "verse": current_verse,
                     "verse_end": None,
-                    "text": t[:8000]
+                    "text": t
                 })
         body = []
 

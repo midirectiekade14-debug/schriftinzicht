@@ -57,7 +57,7 @@ def parse_psalm(html, psalm_num):
                         "chapter": psalm_num,
                         "verse": current_verse,
                         "verse_end": None,
-                        "text": joined[:5000]
+                        "text": joined
                     })
             current_verse = int(m.group(1))
             # Rest of the line after verse marker
@@ -76,7 +76,7 @@ def parse_psalm(html, psalm_num):
                 "chapter": psalm_num,
                 "verse": current_verse,
                 "verse_end": None,
-                "text": joined[:5000]
+                "text": joined
             })
 
     # If no verses found, try whole psalm
@@ -88,7 +88,7 @@ def parse_psalm(html, psalm_num):
                 "chapter": psalm_num,
                 "verse": 1,
                 "verse_end": None,
-                "text": full_text[:5000]
+                "text": full_text
             })
 
     return results
