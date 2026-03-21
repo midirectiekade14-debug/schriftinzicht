@@ -1,4 +1,25 @@
+import { useState, useEffect } from 'react';
+
+const THEME_KEY = 'si-theme';
+
 export default function Instellingen() {
+  const [light, setLight] = useState(() => {
+    try { return localStorage.getItem(THEME_KEY) === 'light'; }
+    catch { return false; }
+  });
+
+  useEffect(() => {
+    if (light) {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem(THEME_KEY, 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem(THEME_KEY, 'dark');
+    }
+  }, [light]);
+
+  const toggleTheme = () => setLight(!light);
+
   return (
     <>
       <div className="screen-header">
@@ -7,9 +28,9 @@ export default function Instellingen() {
       <div className="page">
         <div className="settings-section">
           <h3>Weergave</h3>
-          <div className="setting-row">
+          <div className="setting-row" onClick={toggleTheme} style={{ cursor: 'pointer' }}>
             <span>Thema</span>
-            <span className="setting-value">Donker (standaard)</span>
+            <span className="setting-value">{light ? 'Licht' : 'Donker'} {light ? '☽' : '☀'}</span>
           </div>
           <div className="setting-row">
             <span>Lettergrootte</span>

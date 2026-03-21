@@ -1,0 +1,7 @@
+[INFO] calvijn.json: 14031 items
+[INFO] Totaal tekens: 36,969,103
+[START] Items 1-14031 met 2 workers
+[PROGRESS] 10/14031 (0.1%) | 0.2 items/s | ~1551 min remaining | ok=8 fail=2
+[PROGRESS] 20/14031 (0.1%) | 0.1 items/s | ~1620 min remaining | ok=15 fail=5
+[PROGRESS] 30/14031 (0.2%) | 0.1 items/s | ~1808 min remaining | ok=24 fail=6
+[PROGRESS] 40/14031 (0.3%) | 0.1 items/s | ~1810 min remaining | ok=34 fail=6

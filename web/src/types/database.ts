@@ -60,6 +60,21 @@ export interface CatechismQuestion {
   answer_text: string;
 }
 
+export interface Sermon {
+  id: string;
+  author_id: string;
+  title: string;
+  start_verse_id: string;
+  end_verse_id: string | null;
+  sermon_text: string;
+  source_collection: string | null;
+  year_preached: number | null;
+  language: string;
+  word_count: number | null;
+  created_at: string;
+  authors?: Author;
+}
+
 export interface CrossReferenceToVerse {
   id: string;
   book_id: string;

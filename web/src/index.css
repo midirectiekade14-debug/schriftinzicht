@@ -4689,8 +4689,12 @@ body {
   color: var(--text); margin: 0 0 var(--sp-xs);
 }
 .lr-theme-desc {
-  font-family: var(--font-serif); font-size: 14px; font-style: italic;
-  color: var(--text-muted); line-height: 1.6; margin: 0;
+  font-family: var(--font-serif); font-size: 17px; font-style: italic;
+  color: var(--text); line-height: 1.7; margin: 0;
+  padding: var(--sp-sm) var(--sp-md);
+  border-left: 3px solid var(--accent);
+  background: rgba(196,149,106,0.05);
+  border-radius: 0 8px 8px 0;
 }
 
 .lr-progress-row { display: flex; align-items: center; gap: 8px; margin-bottom: var(--sp-lg); }
@@ -4712,22 +4716,23 @@ body {
   padding: var(--sp-md); cursor: pointer;
 }
 .lr-checkbox {
-  background: none; border: 1.5px solid var(--text-faint); cursor: pointer;
-  width: 24px; height: 24px; border-radius: 6px; font-size: 0;
+  -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.05); border: 2px solid var(--text-muted);
+  cursor: pointer; width: 26px; height: 26px; min-width: 26px;
+  border-radius: 7px; font-size: 0; line-height: 0;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all 0.15s;
-  color: var(--text);
+  flex-shrink: 0; transition: all 0.15s; padding: 0;
 }
 .lr-checkbox::after {
-  content: '';
-  display: block; width: 12px; height: 12px; border-radius: 3px;
-  transition: background 0.15s;
+  content: ''; display: block;
+  width: 14px; height: 14px; border-radius: 3px;
+  transition: background 0.15s, transform 0.15s;
 }
 .lr-day-card.done .lr-checkbox {
   border-color: #4CAF50; background: rgba(76,175,80,0.15);
 }
 .lr-day-card.done .lr-checkbox::after {
-  background: #4CAF50;
+  background: #4CAF50; transform: scale(1);
 }
 .lr-day-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .lr-day-name {

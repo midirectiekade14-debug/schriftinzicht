@@ -1,0 +1,35 @@
+export default function Logo() {
+  return (
+    <div className="search-logo">
+      <svg className="search-logo-svg" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="sl-ac" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#C4956A" />
+            <stop offset="100%" stopColor="#8B6840" />
+          </linearGradient>
+          <linearGradient id="sl-cL" x1="1" y1="0" x2="0" y2="0.4">
+            <stop offset="0%" stopColor="#C4956A" stopOpacity={0.45} />
+            <stop offset="100%" stopColor="#8B6840" stopOpacity={0.15} />
+          </linearGradient>
+          <linearGradient id="sl-cR" x1="0" y1="0" x2="1" y2="0.4">
+            <stop offset="0%" stopColor="#C4956A" stopOpacity={0.45} />
+            <stop offset="100%" stopColor="#8B6840" stopOpacity={0.15} />
+          </linearGradient>
+        </defs>
+        {/* Kruis */}
+        <g transform="translate(250, 155)">
+          <rect x="-4" y="-130" width="8" height="260" rx="4" fill="url(#sl-ac)" />
+          <rect x="-72" y="-40" width="144" height="8" rx="4" fill="url(#sl-ac)" />
+          <circle cx={0} cy={-37} r={5} fill="url(#sl-ac)" opacity={0.5} />
+        </g>
+        {/* Open Bijbel */}
+        <g transform="translate(250, 365)">
+          <path d="M-6 -55 C-6 -55 -80 -65 -95 -50 L-99 58 C-82 45 -6 55 -6 55 Z" fill="url(#sl-cL)" stroke="#C4956A" strokeWidth={2} strokeLinejoin="round" />
+          <path d="M6 -55 C6 -55 80 -65 95 -50 L99 58 C82 45 6 55 6 55 Z" fill="url(#sl-cR)" stroke="#C4956A" strokeWidth={2} strokeLinejoin="round" />
+          <path d="M0 -57 L0 57" stroke="#C4956A" strokeWidth={2.5} opacity={0.6} strokeLinecap="round" />
+          <path d="M1 -57 Q9 -7 4 57 Q3 67 7 75" fill="none" stroke="#8B3030" strokeWidth={1.8} opacity={0.45} strokeLinecap="round" />
+        </g>
+      </svg>
+    </div>
+  );
+}
