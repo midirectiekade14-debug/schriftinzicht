@@ -718,7 +718,11 @@ export default function Zoeken() {
                             </svg>
                           </button>
                         </div>
-                        <div className="commentary-text">{expandInlineRefs(text)}</div>
+                        <div className="commentary-text">
+                          {text.split(/\n{2,}/).map((para, pi) => (
+                            <p key={pi} className="comm-para">{expandInlineRefs(para.trim())}</p>
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
@@ -769,7 +773,14 @@ export default function Zoeken() {
                                   </svg>
                                 </button>
                               </div>
-                              <div className="commentary-text">{expandInlineRefs(isExpanded ? text : preview)}</div>
+                              <div className="commentary-text">
+                                {isExpanded
+                                  ? text.split(/\n{2,}/).map((para, pi) => (
+                                      <p key={pi} className="comm-para">{expandInlineRefs(para.trim())}</p>
+                                    ))
+                                  : expandInlineRefs(preview)
+                                }
+                              </div>
                               {text.length > 200 && (
                                 <div className="expand-hint">{isExpanded ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}</div>
                               )}

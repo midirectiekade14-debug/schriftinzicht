@@ -423,6 +423,13 @@ body {
   font-family: var(--font-serif);
 }
 
+.comm-para {
+  margin: 0 0 8px;
+}
+.comm-para:last-child {
+  margin-bottom: 0;
+}
+
 .expand-hint {
   font-size: 12px;
   color: var(--accent);
