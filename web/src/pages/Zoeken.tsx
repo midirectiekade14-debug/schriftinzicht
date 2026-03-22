@@ -638,25 +638,48 @@ export default function Zoeken() {
             {kanttekeningen.length > 0 && (
               <div className="detail-section" style={{ marginBottom: 'var(--sp-md)' }}>
                 <div className="section-title">Kanttekeningen ({kanttekeningen.length})</div>
-                {kanttekeningen.map((k) => {
-                  const v = isRange ? verses.find(vv => vv.id === k.verse_id) : null;
-                  return (
-                    <div key={k.id} className="kanttekening-item">
-                      {v && <span className="pv-kant-verse">vs. {v.verse}</span>}
-                      {k.marker && <span className="kant-marker">{k.marker}</span>}
-                      <span className="kant-text">{expandInlineRefs(k.note_text)}</span>
-                      <button
-                        className={`detail-bm-btn ${isDetailBookmarked(k.id) ? 'active' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('kanttekening', k.id, k.note_text || '', 'Kanttekening'); }}
-                        title="Bladwijzer"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill={isDetailBookmarked(k.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
-                          <path d="M5 3C5 2.44772 5.44772 2 6 2H14C14.5523 2 15 2.44772 15 3V17.5L10 14L5 17.5V3Z" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
+                {(() => {
+                  // Group by verse, keeping verse order
+                  const byVerse = new Map<string, Kanttekening[]>();
+                  for (const v of verses) {
+                    byVerse.set(v.id, []);
+                  }
+                  for (const k of kanttekeningen) {
+                    const list = byVerse.get(k.verse_id);
+                    if (list) list.push(k);
+                    else byVerse.set(k.verse_id, [k]);
+                  }
+                  return Array.from(byVerse.entries()).map(([verseId, kants]) => {
+                    if (kants.length === 0) return null;
+                    // Sort within verse by note_order
+                    kants.sort((a, b) => (a.note_order || 0) - (b.note_order || 0));
+                    const v = verses.find(vv => vv.id === verseId);
+                    return (
+                      <div key={verseId} className="kant-verse-group">
+                        {isRange && v && (
+                          <div className="comm-verse-heading">
+                            <span className="comm-verse-ref">{v.bible_books?.name || ''} {v.chapter}:{v.verse}</span>
+                          </div>
+                        )}
+                        {kants.map((k) => (
+                          <div key={k.id} className="kanttekening-item">
+                            {k.marker && <span className="kant-marker">{k.marker}</span>}
+                            <span className="kant-text">{expandInlineRefs(k.note_text)}</span>
+                            <button
+                              className={`detail-bm-btn ${isDetailBookmarked(k.id) ? 'active' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('kanttekening', k.id, k.note_text || '', 'Kanttekening'); }}
+                              title="Bladwijzer"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 20 20" fill={isDetailBookmarked(k.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+                                <path d="M5 3C5 2.44772 5.44772 2 6 2H14C14.5523 2 15 2.44772 15 3V17.5L10 14L5 17.5V3Z" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
