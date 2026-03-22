@@ -718,7 +718,10 @@ export default function Zoeken() {
                     return (
                       <div key={verseId} className="comm-verse-group">
                         {isRange && v && (
-                          <div className="comm-verse-heading">Vers {v.verse}</div>
+                          <div className="comm-verse-heading">
+                            <span className="comm-verse-ref">{v.bible_books?.name || ''} {v.chapter}:{v.verse}</span>
+                            {v.text_sv && <span className="comm-verse-sv">{v.text_sv}</span>}
+                          </div>
                         )}
                         {comms.map((item) => {
                           const isExpanded = expanded[item.id];

@@ -344,15 +344,29 @@ body {
 }
 
 .comm-verse-heading {
+  padding-bottom: var(--sp-xs);
+  margin-bottom: var(--sp-sm);
+  border-bottom: 1px solid var(--divider);
+}
+
+.comm-verse-ref {
+  display: block;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding-bottom: var(--sp-xs);
-  margin-bottom: var(--sp-sm);
-  border-bottom: 1px solid var(--divider);
+}
+
+.comm-verse-sv {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.5;
 }
 
 .commentary-card {
