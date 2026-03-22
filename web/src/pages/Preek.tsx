@@ -15,8 +15,10 @@ interface SermonDetail {
     name: string;
     born_year: number | null;
     died_year: number | null;
+    portrait_url: string | null;
   } | null;
   start_verse: {
+    book_id: string;
     chapter: number;
     verse: number;
     bible_books: { name: string } | null;
@@ -52,7 +54,7 @@ export default function Preek() {
     setCurrentPage(0);
     supabase
       .from('sermons')
-      .select('id, title, sermon_text, source_collection, year_preached, word_count, author_id, authors(name, born_year, died_year), start_verse:bible_verses!start_verse_id(chapter, verse, bible_books(name))')
+      .select('id, title, sermon_text, source_collection, year_preached, word_count, author_id, authors(name, born_year, died_year, portrait_url), start_verse:bible_verses!start_verse_id(book_id, chapter, verse, bible_books(name))')
       .eq('id', id!)
       .single()
       .then(({ data }) => {
@@ -105,7 +107,8 @@ export default function Preek() {
     return result;
   }, [sermon]);
 
-  const totalPages = pages.length;
+  // Page 0 = cover, pages 1+ = text
+  const totalPages = pages.length + 1;
 
   const goPage = (p: number) => {
     if (p >= 0 && p < totalPages) {
@@ -136,14 +139,21 @@ export default function Preek() {
   }
 
   const authorName = sermon.authors?.name || 'Onbekend';
+  const portraitUrl = sermon.authors?.portrait_url || null;
   const years = sermon.authors?.born_year
     ? `${sermon.authors.born_year}\u2013${sermon.authors.died_year || '?'}`
     : '';
+  const verseBookName = sermon.start_verse?.bible_books?.name || '';
   const verseRef = sermon.start_verse
-    ? `${displayBookName(sermon.start_verse.bible_books?.name || '')} ${sermon.start_verse.chapter}:${sermon.start_verse.verse}`
+    ? `${displayBookName(verseBookName)} ${sermon.start_verse.chapter}:${sermon.start_verse.verse}`
     : '';
-
-  const pageContent = pages[currentPage] || [];
+  const verseLink = sermon.start_verse
+    ? `/bijbel/${sermon.start_verse.book_id}/${sermon.start_verse.chapter}?name=${encodeURIComponent(verseBookName)}`
+    : '';
+  const bookTitle = sermon.source_collection || cleanTitle(sermon.title);
+  const isCover = currentPage === 0;
+  const textPageIndex = currentPage - 1;
+  const pageContent = isCover ? [] : (pages[textPageIndex] || []);
 
   return (
     <>
@@ -153,31 +163,55 @@ export default function Preek() {
       </div>
       <div className="page" ref={pageRef}>
         <div className="bijbel-page">
-          {/* Page header */}
-          <div className="bl-page-head">
-            <span className="bl-head-rule" />
-            <span className="bl-head-title">{sermon.source_collection || cleanTitle(sermon.title)}</span>
-            <span className="bl-head-rule" />
-          </div>
-
-          {/* Title only on first page */}
-          {currentPage === 0 && (
-            <div className="preek-header">
-              <h2 className="preek-title">{cleanTitle(sermon.title)}</h2>
-              <div className="preek-meta">
-                {years && <span className="preek-years">{years}</span>}
-                {verseRef && <span className="preek-badge">{verseRef}</span>}
-                {sermon.source_collection && <span className="preek-badge">{sermon.source_collection}</span>}
-              </div>
+          {isCover ? (
+            /* Cover page */
+            <div className="preek-cover">
+              <div className="preek-cover-ornament">{'\u2766'}</div>
+              <h1 className="preek-cover-title">{bookTitle}</h1>
+              <div className="preek-cover-rule" />
+              {portraitUrl && (
+                <img
+                  src={portraitUrl}
+                  alt={authorName}
+                  className="preek-cover-portrait"
+                />
+              )}
+              <h2 className="preek-cover-author">{authorName}</h2>
+              {years && <span className="preek-cover-years">{years}</span>}
+              {verseRef && (
+                <Link to={verseLink} className="preek-cover-verse">{verseRef}</Link>
+              )}
+              <div className="preek-cover-ornament">{'\u2767'}</div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Page header */}
+              <div className="bl-page-head">
+                <span className="bl-head-rule" />
+                <span className="bl-head-title">{bookTitle}</span>
+                <span className="bl-head-rule" />
+              </div>
 
-          {/* Content */}
-          <div className="bijbel-text">
-            {pageContent.map((p, i) => (
-              <p key={i} className="bl-paragraph">{p}</p>
-            ))}
-          </div>
+              {/* Title only on first text page */}
+              {textPageIndex === 0 && (
+                <div className="preek-header">
+                  <h2 className="preek-title">{cleanTitle(sermon.title)}</h2>
+                  <div className="preek-meta">
+                    {years && <span className="preek-years">{years}</span>}
+                    {verseRef && <Link to={verseLink} className="preek-badge">{verseRef}</Link>}
+                    {sermon.source_collection && <span className="preek-badge">{sermon.source_collection}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="bijbel-text">
+                {pageContent.map((p, i) => (
+                  <p key={i} className="bl-paragraph">{p}</p>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Page footer */}
           <div className="bl-page-foot">
@@ -189,7 +223,7 @@ export default function Preek() {
                 </button>
               )}
               <span className="bl-page-num">
-                {totalPages > 1 ? `${currentPage + 1} / ${totalPages}` : ''}
+                {isCover ? '' : `${textPageIndex + 1} / ${pages.length}`}
               </span>
               {currentPage < totalPages - 1 && (
                 <button className="bl-foot-btn" onClick={() => goPage(currentPage + 1)}>

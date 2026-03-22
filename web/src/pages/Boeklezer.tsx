@@ -41,6 +41,18 @@ interface SideCommentary {
 }
 
 const ERA_ORDER = ['Reformatie', 'Nadere Reformatie', 'Puriteinse periode', '19e eeuw', 'Kerkvaders'];
+
+/** Strip metadata prefixes (legenda, publisher info, title pages) from commentary preview */
+function cleanPreview(text: string): string {
+  let s = text;
+  // Strip "Legenda Blauw..." color key blocks
+  s = s.replace(/^Legenda\s+Blauw[\s\S]*?(?=\n[A-Z][a-z])/m, '');
+  // Strip publisher lines
+  s = s.replace(/^(?:DE GROOT GOUDRIAAN[\s\S]*?(?:NUR \d+)|Ongewijzigde fotografische herdruk[\s\S]*?(?:NUR \d+)|Uit het Latijn vertaald[\s\S]*?(?:NUR \d+))\n*/im, '');
+  // Strip "Pagina X van Y" lines
+  s = s.replace(/^Pagina \d+ van \d+\s*/gm, '');
+  return s.trim();
+}
 const ERA_COLORS: Record<string, string> = {
   'Reformatie': '#D4A574',
   'Nadere Reformatie': '#8BB89E',
@@ -237,6 +249,7 @@ export default function Boeklezer() {
   const [author, setAuthor] = useState<AuthorInfo | null>(null);
   const [sourceWorks, setSourceWorks] = useState<SourceWork[]>([]);
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
+  const [sourcesLoaded, setSourcesLoaded] = useState(false);
   const [entries, setEntries] = useState<CommentaryEntry[]>([]);
   const [bookEntries, setBookEntries] = useState<BookEntry[]>([]);
   const [bookIndex, setBookIndex] = useState<{ name: string; order: number }[]>([]);
@@ -308,12 +321,13 @@ export default function Boeklezer() {
       const preSelected = werkParam ? works.find(w => w.id === werkParam) : null;
       const nlWork = works.find(w => w.language_orig === 'nl');
       setSelectedSource(preSelected?.id || nlWork?.id || works[0]?.id || null);
+      setSourcesLoaded(true);
     }).catch(() => setError('Kon gegevens niet laden.'));
   }, [authorId]);
 
   // Load commentaries — try book-scope first, fall back to verse-scope
   useEffect(() => {
-    if (!authorId) return;
+    if (!authorId || !sourcesLoaded) return;
     setLoading(true);
 
     const loadData = async () => {
@@ -411,7 +425,7 @@ export default function Boeklezer() {
     };
 
     loadData();
-  }, [authorId, selectedSource, filterBook, filterChapter]);
+  }, [authorId, selectedSource, sourcesLoaded, filterBook, filterChapter]);
 
   // Build pages
   const pages = useMemo((): PageData[] => {
@@ -921,7 +935,7 @@ export default function Boeklezer() {
                         {sc.authors?.born_year ? ` (${sc.authors.born_year}\u2013${sc.authors.died_year || '?'})` : ''}
                       </div>
                       <div className="bl-side-commentary-text">
-                        {truncate(sc.commentary_text, 300)}
+                        {truncate(cleanPreview(sc.commentary_text), 300)}
                       </div>
                     </Link>
                   ))}
