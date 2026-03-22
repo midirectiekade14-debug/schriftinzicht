@@ -7,6 +7,42 @@ import Logo from '../components/Logo';
 import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 
+/** Split commentary text into readable paragraphs.
+ *  Priority: double newlines > single newlines > sentence-based splitting for long blocks. */
+function splitIntoParagraphs(text: string): string[] {
+  // Try double newlines first
+  const doubleNl = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  if (doubleNl.length > 1) return doubleNl;
+
+  // Try single newlines (many entries use these as paragraph breaks)
+  const singleNl = text.split(/\n/).map(p => p.trim()).filter(Boolean);
+  if (singleNl.length > 1) return singleNl;
+
+  // No newlines at all — split long text on sentence boundaries (~400 chars)
+  if (text.length < 600) return [text];
+
+  const result: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= 500) {
+      result.push(remaining);
+      break;
+    }
+    // Find a sentence end (. ! ?) between char 250–500
+    let splitIdx = -1;
+    for (let i = Math.min(500, remaining.length - 1); i >= 250; i--) {
+      if (/[.!?]/.test(remaining[i]) && (i + 1 >= remaining.length || remaining[i + 1] === ' ')) {
+        splitIdx = i + 1;
+        break;
+      }
+    }
+    if (splitIdx === -1) splitIdx = Math.min(500, remaining.length);
+    result.push(remaining.substring(0, splitIdx).trim());
+    remaining = remaining.substring(splitIdx).trim();
+  }
+  return result;
+}
+
 interface CrossRefRow {
   id: string;
   votes: number;
@@ -719,8 +755,8 @@ export default function Zoeken() {
                           </button>
                         </div>
                         <div className="commentary-text">
-                          {text.split(/\n{2,}/).map((para, pi) => (
-                            <p key={pi} className="comm-para">{expandInlineRefs(para.trim())}</p>
+                          {splitIntoParagraphs(text).map((para, pi) => (
+                            <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
                           ))}
                         </div>
                       </div>
@@ -775,8 +811,8 @@ export default function Zoeken() {
                               </div>
                               <div className="commentary-text">
                                 {isExpanded
-                                  ? text.split(/\n{2,}/).map((para, pi) => (
-                                      <p key={pi} className="comm-para">{expandInlineRefs(para.trim())}</p>
+                                  ? splitIntoParagraphs(text).map((para, pi) => (
+                                      <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
                                     ))
                                   : expandInlineRefs(preview)
                                 }
