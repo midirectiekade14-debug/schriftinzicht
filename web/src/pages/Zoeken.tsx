@@ -382,7 +382,16 @@ export default function Zoeken() {
       deduped.sort((a, b) => (a.year_written || 0) - (b.year_written || 0));
 
       setCommentaries(deduped);
-      setKanttekeningen(kantRes.data || []);
+      // Sort kanttekeningen by verse number, then note_order
+      const kantData = (kantRes.data || []) as Kanttekening[];
+      const verseNumMap = new Map(vData.map((v: any) => [v.id, v.verse]));
+      kantData.sort((a, b) => {
+        const va = verseNumMap.get(a.verse_id) || 0;
+        const vb = verseNumMap.get(b.verse_id) || 0;
+        if (va !== vb) return va - vb;
+        return (a.note_order || 0) - (b.note_order || 0);
+      });
+      setKanttekeningen(kantData);
       setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
     } catch {
       setError('Fout bij het zoeken. Controleer je internetverbinding.');
