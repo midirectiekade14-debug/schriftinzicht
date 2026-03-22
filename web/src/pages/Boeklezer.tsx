@@ -38,6 +38,7 @@ interface SideCommentary {
   language: string;
   year_written: number | null;
   authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
+  bible_verses: { chapter: number; verse: number; bible_books: { name: string; book_order: number } } | null;
 }
 
 const ERA_ORDER = ['Reformatie', 'Nadere Reformatie', 'Puriteinse periode', '19e eeuw', 'Kerkvaders'];
@@ -98,6 +99,8 @@ interface SavedNote {
   text: string;
   ref: string;
   authorName: string;
+  authorId?: string;
+  page?: number;
   ts: number;
 }
 
@@ -117,7 +120,8 @@ function paginateEntries(entries: CommentaryEntry[]): PageData[] {
   for (const entry of entries) {
     const bv = entry.bible_verses;
     const ref = `${bv.bible_books.name} ${bv.chapter}:${bv.verse}`;
-    const block = `\x00REF:${ref}\x00\n${entry.commentary_text.trim()}`;
+    const svText = (bv.text_sv || '').trim();
+    const block = `\x00REF:${ref}\x00SV:${svText}\x00\n${entry.commentary_text.trim()}`;
 
     if (curLen > 0 && curLen + block.length > CHARS_PER_PAGE) {
       pages.push({ blocks: curBlocks, verseIds: curVids, entryIds: curEids, mode: 'verse' });
@@ -182,30 +186,56 @@ function paginateBookEntries(entries: BookEntry[]): PageData[] {
   return pages;
 }
 
-function renderBlock(block: string, idx: number) {
-  const parts = block.split(/\x00REF:(.*?)\x00\n/);
+function renderBlock(block: string, idx: number, expandedRefs: Set<string>, toggleRef: (key: string) => void) {
+  // Split on REF marker that now includes SV text: \x00REF:ref\x00SV:text\x00\n
+  const parts = block.split(/\x00REF:(.*?)\x00SV:(.*?)\x00\n/);
   const elements: React.ReactNode[] = [];
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
-    if (!part) continue;
+    if (!part && i % 3 !== 2) continue;
 
-    if (i % 2 === 1) {
+    if (i % 3 === 1) {
+      // Verse reference header (e.g. "Genesis 1:1")
+      const svText = parts[i + 1] || '';
+      const refKey = `${idx}-${part}`;
+      const isExpanded = expandedRefs.has(refKey);
       elements.push(
-        <div key={`ref-${idx}-${i}`} className="bl-verse-ref">
+        <div
+          key={`ref-${idx}-${i}`}
+          className="bl-verse-ref bl-verse-ref-clickable"
+          onClick={() => toggleRef(refKey)}
+          title={isExpanded ? 'Klik om bijbeltekst te verbergen' : 'Klik om bijbeltekst te tonen'}
+        >
           <span className="bl-ref-ornament">{'\u2767'}</span>
           {part}
           <span className="bl-ref-ornament">{'\u2619'}</span>
+          <span className="bl-ref-toggle">{isExpanded ? '\u25BC' : '\u25B6'}</span>
         </div>
       );
+      // Show SV verse text when expanded
+      if (isExpanded && svText) {
+        elements.push(
+          <div key={`sv-${idx}-${i}`} className="bl-verse-text">
+            {svText}
+          </div>
+        );
+      }
+    } else if (i % 3 === 2) {
+      // Skip — this is the SV text captured by the regex, already handled above
+      continue;
     } else {
+      // Commentary text — always visible
       const paragraphs = part.split('\n').filter(p => p.trim());
       paragraphs.forEach((p, pi) => {
-        elements.push(
-          <p key={`p-${idx}-${i}-${pi}`} className="bl-paragraph">
-            {p}
-          </p>
-        );
+        const cleaned = p.replace(/🔗/g, '').replace(/^Pagina \d+ van \d+\s*$/i, '').trim();
+        if (cleaned) {
+          elements.push(
+            <p key={`p-${idx}-${i}-${pi}`} className="bl-paragraph">
+              {cleaned}
+            </p>
+          );
+        }
       });
     }
   }
@@ -227,7 +257,7 @@ function renderBookBlock(block: string, idx: number) {
   }
 
   // Regular paragraph — split on single newlines for sub-paragraphs
-  const lines = block.split('\n').filter(l => l.trim());
+  const lines = block.split('\n').filter(l => l.trim()).filter(l => !/^Pagina \d+ van \d+\s*$/i.test(l));
   return (
     <div key={`bp-${idx}`} className="bl-entry">
       {lines.map((line, li) => (
@@ -267,6 +297,16 @@ export default function Boeklezer() {
 
   // Deep link highlight
   const [highlight, setHighlight] = useState(false);
+
+  // Expanded verse refs (clicking shows Bible text)
+  const [expandedRefs, setExpandedRefs] = useState<Set<string>>(new Set());
+  const toggleRef = useCallback((key: string) => {
+    setExpandedRefs(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
 
   // Sidebars
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -478,13 +518,19 @@ export default function Boeklezer() {
     setSideLoading(true);
     supabase
       .from('commentaries')
-      .select('id, author_id, verse_id, commentary_text, language, year_written, authors(name, born_year, died_year, era)')
+      .select('id, author_id, verse_id, commentary_text, language, year_written, scope, authors(name, born_year, died_year, era), bible_verses:bible_verses!commentaries_verse_id_fkey(chapter, verse, bible_books!inner(name, book_order))')
       .in('verse_id', vids)
       .neq('author_id', authorId)
+      .eq('scope', 'verse')
       .order('year_written', { ascending: true })
       .limit(30)
       .then(({ data }) => {
-        setSideCommentaries((data || []) as unknown as SideCommentary[]);
+        // Filter out foreword/introduction entries that slipped through scope filter
+        const filtered = ((data || []) as unknown as SideCommentary[]).filter(sc => {
+          const t = sc.commentary_text.trim().substring(0, 120).toUpperCase();
+          return !/^(HOOFDSTUK|VOORREDE|VOORWOORD|ZENDBRIEVEN|INLEIDING|OPDRACHT|VOORAF)/.test(t);
+        });
+        setSideCommentaries(filtered);
         setSideLoading(false);
       });
   }, [currentPage, totalPages, pages, authorId]);
@@ -529,6 +575,19 @@ export default function Boeklezer() {
     const m = pageData.blocks[0].match(/\x00REF:(.*?)\x00/);
     return m ? `${prefix}${m[1]}` : `${prefix}Pagina ${currentPage + 1}`;
   }, [currentPage, pages, totalPages, author]);
+
+  // Extract source page numbers from current page blocks
+  const sourcePageInfo = useMemo(() => {
+    if (totalPages === 0) return '';
+    const pageData = pages[currentPage];
+    if (!pageData) return '';
+    const allText = pageData.blocks.join('\n');
+    const matches = allText.match(/Pagina (\d+) van (\d+)/gi);
+    if (!matches || matches.length === 0) return '';
+    // Take the last match (most relevant)
+    const last = matches[matches.length - 1];
+    return last || '';
+  }, [currentPage, pages, totalPages]);
 
   // Page turning
   const goToPage = useCallback((page: number, direction?: 'left' | 'right') => {
@@ -591,6 +650,8 @@ export default function Boeklezer() {
       text: selPopup.text,
       ref: currentPageLabel,
       authorName: author?.name || '',
+      authorId: authorId || undefined,
+      page: currentPage,
       ts: Date.now(),
     };
     const updated = [note, ...blNotes];
@@ -598,7 +659,7 @@ export default function Boeklezer() {
     localStorage.setItem(BL_NOTES_KEY, JSON.stringify(updated));
     setSelPopup(null);
     window.getSelection()?.removeAllRanges();
-  }, [selPopup, currentPageLabel, author, blNotes]);
+  }, [selPopup, currentPageLabel, author, authorId, currentPage, blNotes]);
 
   // Dismiss popup on click elsewhere
   useEffect(() => {
@@ -814,17 +875,38 @@ export default function Boeklezer() {
           {blNotes.length > 0 && (
             <div className="bl-side-section">
               <div className="bl-side-title">Notities</div>
-              {blNotes.slice(0, 10).map((n, i) => (
-                <div key={i} className="bl-side-note">
-                  <div className="bl-side-note-ref">{n.ref}</div>
-                  <div className="bl-side-note-text">{truncate(n.text, 80)}</div>
-                  <button className="bl-side-item-rm" onClick={() => {
-                    const updated = blNotes.filter((_, j) => j !== i);
-                    setBlNotes(updated);
-                    localStorage.setItem(BL_NOTES_KEY, JSON.stringify(updated));
-                  }}>{'\u2715'}</button>
-                </div>
-              ))}
+              {blNotes.slice(0, 10).map((n, i) => {
+                const noteContent = (
+                  <>
+                    <div className="bl-side-note-ref">{n.ref}</div>
+                    <div className="bl-side-note-text">{truncate(n.text, 80)}</div>
+                    <button className="bl-side-item-rm" onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const updated = blNotes.filter((_, j) => j !== i);
+                      setBlNotes(updated);
+                      localStorage.setItem(BL_NOTES_KEY, JSON.stringify(updated));
+                    }}>{'\u2715'}</button>
+                  </>
+                );
+                // Navigate to note location if we have authorId + page
+                if (n.authorId && n.page !== undefined) {
+                  const isSameAuthor = n.authorId === authorId;
+                  if (isSameAuthor) {
+                    return (
+                      <div key={i} className="bl-side-note bl-side-link" onClick={() => goToPage(n.page!)}>
+                        {noteContent}
+                      </div>
+                    );
+                  }
+                  return (
+                    <Link key={i} to={`/boeklezer/${n.authorId}?page=${(n.page || 0) + 1}`} className="bl-side-note bl-side-link">
+                      {noteContent}
+                    </Link>
+                  );
+                }
+                return <div key={i} className="bl-side-note">{noteContent}</div>;
+              })}
             </div>
           )}
         </aside>
@@ -844,8 +926,8 @@ export default function Boeklezer() {
               <span className="bl-head-title">{currentWork?.title || author?.name || ''}</span>
               <button
                 className={`bl-bookmark-btn ${isBookmarked ? 'bl-bookmarked' : ''}`}
-                onClick={addBookmark}
-                title="Bladwijzer"
+                onClick={isBookmarked ? () => removeBookmark(currentPage) : addBookmark}
+                title={isBookmarked ? 'Bladwijzer verwijderen' : 'Bladwijzer plaatsen'}
                 aria-label="Bladwijzer"
               >
                 <svg width="20" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -867,13 +949,16 @@ export default function Boeklezer() {
               ) : pageData?.mode === 'book' ? (
                 pageBlocks.map((block, idx) => renderBookBlock(block, idx))
               ) : (
-                pageBlocks.map((block, idx) => renderBlock(block, idx))
+                pageBlocks.map((block, idx) => renderBlock(block, idx, expandedRefs, toggleRef))
               )}
             </div>
 
             {/* Page footer with prev/next */}
             <div className="bl-page-foot">
               <span className="bl-foot-rule" />
+              {sourcePageInfo && (
+                <div className="bl-source-page">{sourcePageInfo}</div>
+              )}
               <div className="bl-foot-nav">
                 {currentPage > 0 && (
                   <button className="bl-foot-btn" onClick={prevPage}>{'\u2039'} Vorige</button>
@@ -913,34 +998,65 @@ export default function Boeklezer() {
             ) : sideCommentaries.length === 0 ? (
               <div className="bl-side-empty">Geen andere verklaringen voor deze verzen</div>
             ) : (() => {
-              // Group by era, sort eras, sort authors within era
-              const byEra = new Map<string, SideCommentary[]>();
+              // Group by verse reference, then by era within each verse
+              const verseRef = (sc: SideCommentary) => {
+                if (sc.bible_verses) {
+                  return `${sc.bible_verses.bible_books.name} ${sc.bible_verses.chapter}:${sc.bible_verses.verse}`;
+                }
+                return sc.verse_id;
+              };
+              const verseOrder = (sc: SideCommentary) => {
+                if (sc.bible_verses) {
+                  return sc.bible_verses.bible_books.book_order * 100000 + sc.bible_verses.chapter * 1000 + sc.bible_verses.verse;
+                }
+                return 0;
+              };
+
+              // Collect unique verses in order
+              const verseMap = new Map<string, { order: number; items: SideCommentary[] }>();
               for (const sc of sideCommentaries) {
-                const era = sc.authors?.era || 'Overig';
-                if (!byEra.has(era)) byEra.set(era, []);
-                byEra.get(era)!.push(sc);
+                const ref = verseRef(sc);
+                if (!verseMap.has(ref)) verseMap.set(ref, { order: verseOrder(sc), items: [] });
+                verseMap.get(ref)!.items.push(sc);
               }
-              const sortedEras = Array.from(byEra.keys()).sort((a, b) => {
-                const ai = ERA_ORDER.indexOf(a);
-                const bi = ERA_ORDER.indexOf(b);
-                return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+              const sortedVerses = Array.from(verseMap.entries()).sort((a, b) => a[1].order - b[1].order);
+
+              return sortedVerses.map(([ref, { items }]) => {
+                // Within each verse, group by era
+                const byEra = new Map<string, SideCommentary[]>();
+                for (const sc of items) {
+                  const era = sc.authors?.era || 'Overig';
+                  if (!byEra.has(era)) byEra.set(era, []);
+                  byEra.get(era)!.push(sc);
+                }
+                const sortedEras = Array.from(byEra.keys()).sort((a, b) => {
+                  const ai = ERA_ORDER.indexOf(a);
+                  const bi = ERA_ORDER.indexOf(b);
+                  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                });
+
+                return (
+                  <div key={ref} className="bl-side-verse-group">
+                    <div className="bl-side-verse-label">{ref}</div>
+                    {sortedEras.map(era => (
+                      <div key={era} className="bl-side-era-group">
+                        <div className="bl-side-era-label" style={{ color: ERA_COLORS[era] || 'var(--text-faint)' }}>{era}</div>
+                        {byEra.get(era)!.map(sc => (
+                          <Link key={sc.id} to={`/boeklezer/${sc.author_id}?verseId=${sc.verse_id}`} className="bl-side-commentary bl-side-link">
+                            <div className="bl-side-commentary-author">
+                              {sc.authors?.name || 'Onbekend'}
+                              {sc.authors?.born_year ? ` (${sc.authors.born_year}\u2013${sc.authors.died_year || '?'})` : ''}
+                            </div>
+                            <div className="bl-side-commentary-text">
+                              {truncate(cleanPreview(sc.commentary_text), 300)}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
               });
-              return sortedEras.map(era => (
-                <div key={era} className="bl-side-era-group">
-                  <div className="bl-side-era-label" style={{ color: ERA_COLORS[era] || 'var(--text-faint)' }}>{era}</div>
-                  {byEra.get(era)!.map(sc => (
-                    <Link key={sc.id} to={`/boeklezer/${sc.author_id}?verseId=${sc.verse_id}`} className="bl-side-commentary bl-side-link">
-                      <div className="bl-side-commentary-author">
-                        {sc.authors?.name || 'Onbekend'}
-                        {sc.authors?.born_year ? ` (${sc.authors.born_year}\u2013${sc.authors.died_year || '?'})` : ''}
-                      </div>
-                      <div className="bl-side-commentary-text">
-                        {truncate(cleanPreview(sc.commentary_text), 300)}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ));
             })()}
           </div>
         </aside>

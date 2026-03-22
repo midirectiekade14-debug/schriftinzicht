@@ -3283,8 +3283,23 @@ a.preek-badge:hover {
   line-height: 1.4;
 }
 
+.bl-side-verse-group {
+  margin-bottom: 14px;
+}
+
+.bl-side-verse-label {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent, #D4A574);
+  letter-spacing: 0.06em;
+  padding: 6px 0 4px;
+  border-bottom: 2px solid var(--divider);
+  margin-bottom: 4px;
+}
+
 .bl-side-era-group {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .bl-side-era-label {
@@ -3464,6 +3479,32 @@ a.preek-badge:hover {
 
 .bl-ref-ornament { font-size: 11px; color: var(--parch-rule); }
 
+.bl-verse-ref-clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+.bl-verse-ref-clickable:hover {
+  color: var(--parch-text);
+}
+.bl-ref-toggle {
+  font-size: 8px;
+  opacity: 0.4;
+  margin-left: 2px;
+}
+
+.bl-verse-text {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--parch-muted);
+  background: rgba(139, 69, 19, 0.04);
+  border-left: 2px solid var(--parch-rule);
+  padding: 8px 12px;
+  margin: 0 0 10px;
+  line-height: 1.6;
+}
+
 .bl-book-header {
   display: flex;
   align-items: center;
@@ -3534,6 +3575,15 @@ a.preek-badge:hover {
   letter-spacing: 0.1em;
   min-width: 30px;
   text-align: center;
+}
+
+.bl-source-page {
+  font-family: var(--font-serif);
+  font-size: 10px;
+  color: var(--parch-rule);
+  text-align: center;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
 }
 
 .bl-foot-nav {
