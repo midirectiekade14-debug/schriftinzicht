@@ -9,7 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 export default function EditOverlay() {
   const [searchParams] = useSearchParams();
   const editMode = searchParams.get('edit') === '1';
-  const [hovered, setHovered] = useState<HTMLElement | null>(null);
+  const [, setHovered] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!editMode) return;

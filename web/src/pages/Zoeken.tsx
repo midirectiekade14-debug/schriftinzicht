@@ -751,7 +751,9 @@ export default function Zoeken() {
                 )}
               </div>
               {verses.map(v => (
-                <p key={v.id} className="verse-text" style={isRange ? { marginBottom: 4 } : undefined}>
+                <p key={v.id} className="verse-text" style={isRange ? { marginBottom: 4 } : undefined}
+                  data-edit-table="bible_verses" data-edit-id={v.id} data-edit-col="text_sv"
+                  data-edit-label={`${refLabel} :${v.verse}`}>
                   {isRange && <sup style={{ fontSize: 11, color: 'var(--accent-dim)', marginRight: 2 }}>{v.verse}</sup>}
                   {v.text_sv}
                 </p>
@@ -788,7 +790,7 @@ export default function Zoeken() {
                         {kants.map((k) => (
                           <div key={k.id} className="kanttekening-item">
                             {k.marker && <span className="kant-marker">{k.marker}</span>}
-                            <span className="kant-text">{expandInlineRefs(k.note_text)}</span>
+                            <span className="kant-text" data-edit-table="kanttekeningen" data-edit-id={k.id} data-edit-col="note_text" data-edit-label={`Kanttekening ${k.marker || ''}`}>{expandInlineRefs(k.note_text)}</span>
                             <button
                               className={`detail-bm-btn ${isDetailBookmarked(k.id) ? 'active' : ''}`}
                               onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('kanttekening', k.id, k.note_text || '', 'Kanttekening'); }}
@@ -842,7 +844,7 @@ export default function Zoeken() {
                             </svg>
                           </button>
                         </div>
-                        <div className="commentary-text">
+                        <div className="commentary-text" data-edit-table="commentaries" data-edit-id={item.id} data-edit-col="commentary_text" data-edit-label={`${authorName} — verklaring`}>
                           {splitIntoParagraphs(text).map((para, pi) => (
                             <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
                           ))}
@@ -897,7 +899,7 @@ export default function Zoeken() {
                                   </svg>
                                 </button>
                               </div>
-                              <div className="commentary-text">
+                              <div className="commentary-text" data-edit-table="commentaries" data-edit-id={item.id} data-edit-col="commentary_text" data-edit-label={`${authorName} — verklaring`}>
                                 {isExpanded
                                   ? splitIntoParagraphs(text).map((para, pi) => (
                                       <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>

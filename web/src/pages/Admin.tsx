@@ -40,7 +40,7 @@ export default function Admin() {
           <span className="adm-header-title">SchriftInzicht Beheer</span>
         </div>
         <div className="adm-header-right">
-          <span className="adm-header-user">{user.email}</span>
+          <span className="adm-header-user">{user?.email}</span>
           <button className="adm-logout" onClick={async () => { await supabase.auth.signOut(); window.location.href = '/schriftinzicht/inloggen'; }}>Uitloggen</button>
         </div>
       </header>

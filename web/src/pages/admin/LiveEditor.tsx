@@ -16,7 +16,7 @@ export default function LiveEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
-  const [iframePath, setIframePath] = useState('/zoeken');
+  const [iframePath, setIframePath] = useState('/bijbel/genesis/1');
 
   // Listen for edit messages from iframe
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function LiveEditor() {
       setLoading(false);
       return;
     }
-    const text = data?.[col] || '';
+    const text = (data as unknown as Record<string, string>)?.[col] || '';
     setTarget({ table, id, col, label });
     setEditText(text);
     setOriginalText(text);
@@ -71,7 +71,7 @@ export default function LiveEditor() {
 
   const quickLinks = [
     { label: 'Zoeken', path: '/zoeken' },
-    { label: 'Bijbel', path: '/bijbel' },
+    { label: 'Genesis 1', path: '/bijbel/genesis/1' },
     { label: 'Catechismus', path: '/catechismus' },
     { label: 'NGB', path: '/belijdenis/ngb' },
     { label: 'DL', path: '/belijdenis/dl' },
