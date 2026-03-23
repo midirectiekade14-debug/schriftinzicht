@@ -8,6 +8,24 @@ interface EditTarget {
   label: string;
 }
 
+const FONTS = [
+  { label: 'Serif', value: "'Cormorant Garamond', Georgia, serif" },
+  { label: 'Sans', value: "'Libre Franklin', system-ui, sans-serif" },
+];
+
+const SIZES = [
+  { label: 'S', value: '13px' },
+  { label: 'M', value: '15px' },
+  { label: 'L', value: '18px' },
+  { label: 'XL', value: '22px' },
+];
+
+const COLORS = [
+  { label: 'Tekst', value: 'var(--text, #e7e1d8)' },
+  { label: 'Accent', value: '#C4956A' },
+  { label: 'Gedempt', value: 'var(--text-muted, #8a8278)' },
+];
+
 export default function LiveEditor() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [target, setTarget] = useState<EditTarget | null>(null);
@@ -17,6 +35,9 @@ export default function LiveEditor() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [iframePath, setIframePath] = useState('/bijbel/genesis/1');
+  const [font, setFont] = useState(FONTS[0].value);
+  const [fontSize, setFontSize] = useState(SIZES[1].value);
+  const [fontColor, setFontColor] = useState(COLORS[0].value);
 
   // Listen for edit messages from iframe
   useEffect(() => {
@@ -71,7 +92,7 @@ export default function LiveEditor() {
 
   const quickLinks = [
     { label: 'Zoeken', path: '/zoeken' },
-    { label: 'Genesis 1', path: '/bijbel/genesis/1' },
+    { label: 'Bijbel', path: '/bijbel/genesis/1' },
     { label: 'Catechismus', path: '/catechismus' },
     { label: 'NGB', path: '/belijdenis/ngb' },
     { label: 'DL', path: '/belijdenis/dl' },
@@ -136,11 +157,42 @@ export default function LiveEditor() {
                 <span className="adm-live-target-meta">{target.table} → {target.col}</span>
               </div>
 
+              {/* Huisstijl opties */}
+              <div className="adm-style-bar">
+                <div className="adm-style-group">
+                  <label>Font</label>
+                  <div className="adm-style-btns">
+                    {FONTS.map(f => (
+                      <button key={f.label} className={font === f.value ? 'active' : ''} onClick={() => setFont(f.value)}
+                        style={{ fontFamily: f.value }}>{f.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="adm-style-group">
+                  <label>Grootte</label>
+                  <div className="adm-style-btns">
+                    {SIZES.map(s => (
+                      <button key={s.label} className={fontSize === s.value ? 'active' : ''} onClick={() => setFontSize(s.value)}>{s.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="adm-style-group">
+                  <label>Kleur</label>
+                  <div className="adm-style-btns">
+                    {COLORS.map(c => (
+                      <button key={c.label} className={fontColor === c.value ? 'active' : ''} onClick={() => setFontColor(c.value)}
+                        style={{ color: c.value }}>{c.label}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <textarea
                 className="adm-textarea"
                 value={editText}
                 onChange={e => setEditText(e.target.value)}
                 rows={20}
+                style={{ fontFamily: font, fontSize, color: fontColor }}
               />
 
               <div className="adm-editor-footer">

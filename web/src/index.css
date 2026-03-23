@@ -5891,6 +5891,16 @@ a.preek-badge:hover {
   resize: none; font-family: inherit; min-height: 200px;
 }
 .adm-live-editor .adm-btn { align-self: flex-end; }
+.adm-style-bar { display: flex; gap: 12px; flex-wrap: wrap; }
+.adm-style-group { display: flex; align-items: center; gap: 4px; }
+.adm-style-group label { font-size: 11px; color: var(--text-muted); min-width: 42px; }
+.adm-style-btns { display: flex; gap: 2px; }
+.adm-style-btns button {
+  background: var(--bg); border: 1px solid rgba(196,149,106,0.12); color: var(--text-muted);
+  padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;
+}
+.adm-style-btns button:hover { border-color: rgba(196,149,106,0.4); }
+.adm-style-btns button.active { background: rgba(196,149,106,0.15); border-color: #C4956A; color: #C4956A; }
 @media (max-width: 900px) {
   .adm-live-split { flex-direction: column; }
   .adm-live-editor { width: 100%; }
