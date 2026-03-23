@@ -38,6 +38,14 @@ function cleanTitle(t: string): string {
   return s;
 }
 
+const ERA_COLORS: Record<string, string> = {
+  'Kerkvaders': 'var(--era-kerkvaders)',
+  'Reformatie': 'var(--era-reformatie)',
+  'Nadere Reformatie': 'var(--era-nadere)',
+  'Puriteinse periode': 'var(--era-puriteinse)',
+  '19e eeuw': 'var(--era-19e)',
+};
+
 export default function Oudvaders() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +147,11 @@ export default function Oudvaders() {
               <div className="author-info">
                 <div className="author-name">{a.name}</div>
                 {years && <div className="author-years">{years}</div>}
-                {a.era && <div className="author-era">{a.era}</div>}
+                {a.era && (
+                  <div className="author-era" style={{ color: ERA_COLORS[a.era] || 'var(--accent)' }}>
+                    {a.era}
+                  </div>
+                )}
                 {a.biography && <div className="author-bio">{a.biography}</div>}
                 <button
                   className="ov-works-toggle"

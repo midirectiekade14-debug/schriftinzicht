@@ -86,11 +86,11 @@ export default function Bijbel() {
       <div className="page">
         <Logo />
         <div className="bible-two-col">
-          <div className="bible-col">
+          <div className="bible-col bible-col-ot">
             <div className="bible-col-header">Oude Testament</div>
             {otBooks.map(renderBook)}
           </div>
-          <div className="bible-col">
+          <div className="bible-col bible-col-nt">
             <div className="bible-col-header">Nieuwe Testament</div>
             {ntBooks.map(renderBook)}
           </div>

@@ -58,6 +58,8 @@ export default function Verzen() {
   const [searchParams] = useSearchParams();
   const rawBookName = searchParams.get('name') || 'Boek';
   const bookName = displayBookName(rawBookName);
+  const hlStart = parseInt(searchParams.get('hlStart') || '0', 10);
+  const hlEnd = parseInt(searchParams.get('hlEnd') || '0', 10);
   const [verses, setVerses] = useState<BibleVerse[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedVerse, setExpandedVerse] = useState<string | null>(null);
@@ -98,6 +100,15 @@ export default function Verzen() {
         if (data) setChapterCount(data.chapter_count);
       });
   }, [bookId, chapter, chapterNum]);
+
+  // Scroll to first highlighted verse
+  useEffect(() => {
+    if (!hlStart || loading || !verses.length) return;
+    const el = document.querySelector('.bijbel-verse-hl');
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    }
+  }, [hlStart, loading, verses]);
 
   // Kanttekening markers
   const [verseMarkers, setVerseMarkers] = useState<Record<string, string[]>>({});
@@ -275,6 +286,12 @@ export default function Verzen() {
             </button>
           </div>
 
+          {hlStart > 0 && (
+            <div className="bijbel-hl-banner">
+              Leesrooster: vers {hlStart}{hlEnd > hlStart ? `–${hlEnd}` : ''} is gemarkeerd
+            </div>
+          )}
+
           {/* Continuous text */}
           <div className="bijbel-text">
             {verses.map((v) => {
@@ -282,7 +299,7 @@ export default function Verzen() {
               return (
                 <span key={v.id}>
                   <span
-                    className={`bijbel-verse ${isExpanded ? 'bijbel-verse-active' : ''}`}
+                    className={`bijbel-verse ${isExpanded ? 'bijbel-verse-active' : ''}${hlStart && v.verse >= hlStart && v.verse <= hlEnd ? ' bijbel-verse-hl' : ''}`}
                     onClick={() => {
                       const sel = window.getSelection();
                       if (sel && sel.toString().length > 0) return;

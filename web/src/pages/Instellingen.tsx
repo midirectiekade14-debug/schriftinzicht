@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 const THEME_KEY = 'si-theme';
 
 export default function Instellingen() {
+  const navigate = useNavigate();
+  const { user, isLoggedIn } = useAuth();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/inloggen', { replace: true });
+  };
   const [light, setLight] = useState(() => {
     try { return localStorage.getItem(THEME_KEY) === 'light'; }
     catch { return false; }
@@ -70,6 +80,25 @@ export default function Instellingen() {
           <a href="mailto:info@schriftinzicht.nl" className="link">
             info@schriftinzicht.nl
           </a>
+        </div>
+
+        {/* Account */}
+        <div className="settings-section">
+          <h3>Account</h3>
+          {isLoggedIn ? (
+            <>
+              <div className="setting-row">
+                <span>Ingelogd als</span>
+                <span className="setting-value">{user?.email}</span>
+              </div>
+              <button className="settings-logout" onClick={handleLogout}>Uitloggen</button>
+            </>
+          ) : (
+            <div className="setting-row" onClick={() => navigate('/inloggen')} style={{ cursor: 'pointer' }}>
+              <span>Inloggen</span>
+              <span className="setting-value">→</span>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -6,6 +6,7 @@ import type { BibleVerse, Commentary, Kanttekening } from '../types/database';
 import Logo from '../components/Logo';
 import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
+import { useVoiceSearch } from '../hooks/useVoiceSearch';
 
 /** Split commentary text into readable paragraphs.
  *  Priority: double newlines > single newlines > sentence-based splitting for long blocks. */
@@ -144,6 +145,14 @@ function useDailyVerse() {
   return daily;
 }
 
+const ERA_COLORS: Record<string, string> = {
+  'Kerkvaders': 'var(--era-kerkvaders)',
+  'Reformatie': 'var(--era-reformatie)',
+  'Nadere Reformatie': 'var(--era-nadere)',
+  'Puriteinse periode': 'var(--era-puriteinse)',
+  '19e eeuw': 'var(--era-19e)',
+};
+
 const POPULAR_THEMES = [
   { label: 'Genade', query: 'genade' },
   { label: 'Geloof', query: 'geloof' },
@@ -208,6 +217,13 @@ export default function Zoeken() {
   const [loading, setLoading] = useState(false);
   const [verses, setVerses] = useState<BibleVerse[]>([]);
   const [textResults, setTextResults] = useState<BibleVerse[]>([]);
+  const [textTotal, setTextTotal] = useState(0);
+  const [textCollapsed, setTextCollapsed] = useState<Record<string, boolean>>({});
+  const [textCommentaries, setTextCommentaries] = useState<CommentaryWithAuthor[]>([]);
+  const [textCommTotal, setTextCommTotal] = useState(0);
+  const [textSermons, setTextSermons] = useState<any[]>([]);
+  const [textSermonTotal, setTextSermonTotal] = useState(0);
+  const [textTab, setTextTab] = useState<'bijbel' | 'verklaringen' | 'preken'>('bijbel');
   const [commentaries, setCommentaries] = useState<CommentaryWithAuthor[]>([]);
   const [kanttekeningen, setKanttekeningen] = useState<Kanttekening[]>([]);
   const [crossRefs, setCrossRefs] = useState<CrossRefRow[]>([]);
@@ -226,6 +242,7 @@ export default function Zoeken() {
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const dailyVerse = useDailyVerse();
+  const voice = useVoiceSearch((text) => { setQuery(text); setTimeout(() => searchWithQuery(text), 0); });
 
   const isDetailBookmarked = (id: string) => detailBookmarks.some(b => b.id === id);
 
@@ -320,17 +337,63 @@ export default function Zoeken() {
         return;
       }
       setLoading(true); setError(null); setShowSuggestions(false);
-      setVerses([]); setCommentaries([]); setKanttekeningen([]); setCrossRefs([]); setTextResults([]);
+      setVerses([]); setCommentaries([]); setKanttekeningen([]); setCrossRefs([]); setTextResults([]); setTextTotal(0); setTextCollapsed({}); setTextCommentaries([]); setTextCommTotal(0); setTextSermons([]); setTextSermonTotal(0); setTextTab('bijbel');
       addToHistory(q.trim());
       try {
-        const { data, error: err } = await supabase
-          .from('bible_verses')
-          .select('*, bible_books(name, abbreviation)')
-          .ilike('text_sv', `%${q.trim()}%`)
-          .limit(50);
-        if (err) throw err;
-        setTextResults((data || []) as BibleVerse[]);
-        if (!data?.length) setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+        // Parallel: count+fetch verses, commentaries, sermons
+        const [verseCount, versesRes, commCount, commRes, sermonCount, sermonRes] = await Promise.all([
+          supabase
+            .from('bible_verses')
+            .select('id', { count: 'exact', head: true })
+            .ilike('text_sv', `%${q.trim()}%`),
+          supabase
+            .from('bible_verses')
+            .select('*, bible_books(name, abbreviation, testament, book_order)')
+            .ilike('text_sv', `%${q.trim()}%`)
+            .order('book_id')
+            .order('chapter')
+            .order('verse')
+            .limit(500),
+          supabase
+            .from('commentaries')
+            .select('id', { count: 'exact', head: true })
+            .ilike('commentary_text', `%${q.trim()}%`),
+          supabase
+            .from('commentaries')
+            .select('*, authors(name, born_year, died_year, era)')
+            .ilike('commentary_text', `%${q.trim()}%`)
+            .order('year_written', { ascending: true })
+            .limit(100),
+          supabase
+            .from('sermons')
+            .select('id', { count: 'exact', head: true })
+            .ilike('sermon_text', `%${q.trim()}%`),
+          supabase
+            .from('sermons')
+            .select('id, title, year_preached, source_collection, sermon_text, authors(name, born_year, died_year, era)')
+            .ilike('sermon_text', `%${q.trim()}%`)
+            .order('year_preached', { ascending: true })
+            .limit(100),
+        ]);
+
+        setTextTotal(verseCount.count || 0);
+        if (versesRes.error) throw versesRes.error;
+        setTextResults((versesRes.data || []) as BibleVerse[]);
+
+        setTextCommTotal(commCount.count || 0);
+        setTextCommentaries((commRes.data || []) as CommentaryWithAuthor[]);
+
+        setTextSermonTotal(sermonCount.count || 0);
+        setTextSermons(sermonRes.data || []);
+
+        // Auto-select first tab with results
+        if (versesRes.data?.length) setTextTab('bijbel');
+        else if (commRes.data?.length) setTextTab('verklaringen');
+        else if (sermonRes.data?.length) setTextTab('preken');
+
+        if (!versesRes.data?.length && !commRes.data?.length && !sermonRes.data?.length) {
+          setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+        }
       } catch {
         setError('Fout bij het zoeken.');
       } finally {
@@ -525,7 +588,7 @@ export default function Zoeken() {
             <input
               ref={inputRef}
               type="text"
-              placeholder=""
+              placeholder="Bijbelreferentie of trefwoord…"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setSelectedSuggestion(-1); }}
               onKeyDown={handleKeyDown}
@@ -533,10 +596,35 @@ export default function Zoeken() {
               autoComplete="off"
               autoCorrect="off"
             />
-            {query && (
-              <button className="search-clear" onClick={() => { setQuery(''); inputRef.current?.focus(); }} title="Wissen">{'\u00D7'}</button>
-            )}
-            <button onClick={() => { search(); setShowSuggestions(false); }}>Zoek</button>
+            <div className="search-actions">
+              {query && (
+                <button className="search-action-btn search-clear" onClick={() => { setQuery(''); inputRef.current?.focus(); }} title="Wissen" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              )}
+              {voice.supported && (
+                <button
+                  className={`search-action-btn search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                  onClick={voice.toggle}
+                  title="Spraakherkenning"
+                  type="button"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </button>
+              )}
+              <button className="search-submit-btn" onClick={() => { search(); setShowSuggestions(false); }} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Autocomplete dropdown */}
@@ -794,7 +882,7 @@ export default function Zoeken() {
                           const years = item.authors?.born_year
                             ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
                           return (
-                            <div key={item.id} className="commentary-card" onClick={() => toggleExpand(item.id)}>
+                            <div key={item.id} className={`commentary-card${isExpanded ? ' print-show' : ''}`} onClick={() => toggleExpand(item.id)}>
                               <div className="commentary-header">
                                 <span className="author-name">{authorName}</span>
                                 {years && <span className="author-years">{years}</span>}
@@ -836,7 +924,7 @@ export default function Zoeken() {
 
             {/* Kruisverwijzingen */}
             {crossRefs.length > 0 && (
-              <div style={{ marginBottom: 'var(--sp-md)' }}>
+              <div className="cross-refs-section" style={{ marginBottom: 'var(--sp-md)' }}>
                 <div className="section-title">Kruisverwijzingen ({crossRefs.length})</div>
                 <div className="cross-refs-list">
                   {crossRefs.map((cr) => {
@@ -860,29 +948,183 @@ export default function Zoeken() {
           </>
         )}
 
-        {/* Text search results */}
-        {textResults.length > 0 && !loading && (
+        {/* Text search results — tabbed: Bijbel / Verklaringen / Preken */}
+        {(textResults.length > 0 || textCommentaries.length > 0 || textSermons.length > 0) && !loading && (
           <div className="text-results">
-            <div className="section-title">Verzen met "{query.trim()}" ({textResults.length})</div>
-            {textResults.map((v: any) => {
-              const book = v.bible_books;
-              const ref = `${displayBookName(book?.name ?? '')} ${v.chapter}:${v.verse}`;
-              return (
-                <Link
-                  key={v.id}
-                  to={`/zoeken?q=${encodeURIComponent(`${book?.name || ''} ${v.chapter}:${v.verse}`)}`}
-                  className="text-result-item"
-                >
-                  <span className="text-result-ref">{ref}</span>
-                  <span className="text-result-text">{v.text_sv}</span>
-                </Link>
+            {/* Tab bar */}
+            <div className="tr-tabs">
+              <button className={`tr-tab${textTab === 'bijbel' ? ' active' : ''}`} onClick={() => setTextTab('bijbel')}>
+                Bijbel <span className="tr-tab-count">{textTotal}</span>
+              </button>
+              <button className={`tr-tab${textTab === 'verklaringen' ? ' active' : ''}`} onClick={() => setTextTab('verklaringen')}>
+                Verklaringen <span className="tr-tab-count">{textCommTotal}</span>
+              </button>
+              <button className={`tr-tab${textTab === 'preken' ? ' active' : ''}`} onClick={() => setTextTab('preken')}>
+                Preken <span className="tr-tab-count">{textSermonTotal}</span>
+              </button>
+            </div>
+
+            {/* ── Tab: Bijbel ── */}
+            {textTab === 'bijbel' && (() => {
+              const byBook = new Map<string, { book: any; verses: any[] }>();
+              for (const v of textResults as any[]) {
+                const bookName = v.bible_books?.name || 'Onbekend';
+                if (!byBook.has(bookName)) byBook.set(bookName, { book: v.bible_books, verses: [] });
+                byBook.get(bookName)!.verses.push(v);
+              }
+              const entries = Array.from(byBook.entries());
+              const otEntries = entries.filter(([, g]) => g.book?.testament === 'OT');
+              const ntEntries = entries.filter(([, g]) => g.book?.testament === 'NT');
+              const sortByOrder = (a: [string, any], b: [string, any]) =>
+                (a[1].book?.book_order || 0) - (b[1].book?.book_order || 0);
+              otEntries.sort(sortByOrder);
+              ntEntries.sort(sortByOrder);
+
+              const renderGroup = (bookName: string, group: { book: any; verses: any[] }) => {
+                const isCollapsed = textCollapsed[bookName] !== false && group.verses.length > 3;
+                const shown = isCollapsed ? group.verses.slice(0, 3) : group.verses;
+                return (
+                  <div key={bookName} className="tr-book-group">
+                    <div className="tr-book-header">
+                      <span className="tr-book-name">{displayBookName(bookName)}</span>
+                      <span className="tr-book-count">{group.verses.length}×</span>
+                    </div>
+                    {shown.map((v: any) => (
+                      <Link key={v.id} to={`/zoeken?q=${encodeURIComponent(`${v.bible_books?.name || ''} ${v.chapter}:${v.verse}`)}`} className="text-result-item">
+                        <span className="text-result-ref">{v.chapter}:{v.verse}</span>
+                        <span className="text-result-text">{v.text_sv}</span>
+                      </Link>
+                    ))}
+                    {group.verses.length > 3 && (
+                      <button className="tr-show-more" onClick={() => setTextCollapsed(prev => ({ ...prev, [bookName]: isCollapsed ? false : true }))}>
+                        {isCollapsed ? `Alle ${group.verses.length} tonen ▾` : 'Minder tonen ▴'}
+                      </button>
+                    )}
+                  </div>
+                );
+              };
+
+              return textResults.length === 0 ? (
+                <div className="empty-text">Geen bijbelverzen gevonden.</div>
+              ) : (
+                <>
+                  <div className="tr-tab-subtitle">
+                    "{query.trim()}" — {textTotal} keer in de Bijbel
+                    {textResults.length < textTotal && <span className="tr-shown"> (eerste {textResults.length} getoond)</span>}
+                  </div>
+                  {otEntries.length > 0 && (
+                    <div className="tr-testament-section">
+                      <div className="tr-testament-header ot">Oude Testament <span className="tr-testament-count">{otEntries.reduce((s, [, g]) => s + g.verses.length, 0)}</span></div>
+                      {otEntries.map(([name, group]) => renderGroup(name, group))}
+                    </div>
+                  )}
+                  {ntEntries.length > 0 && (
+                    <div className="tr-testament-section">
+                      <div className="tr-testament-header nt">Nieuwe Testament <span className="tr-testament-count">{ntEntries.reduce((s, [, g]) => s + g.verses.length, 0)}</span></div>
+                      {ntEntries.map(([name, group]) => renderGroup(name, group))}
+                    </div>
+                  )}
+                </>
               );
-            })}
+            })()}
+
+            {/* ── Tab: Verklaringen ── */}
+            {textTab === 'verklaringen' && (
+              textCommentaries.length === 0 ? (
+                <div className="empty-text">Geen verklaringen gevonden.</div>
+              ) : (
+                <>
+                  <div className="tr-tab-subtitle">
+                    {textCommTotal} verklaringen met "{query.trim()}"
+                    {textCommentaries.length < textCommTotal && <span className="tr-shown"> (eerste {textCommentaries.length} getoond)</span>}
+                  </div>
+                  {textCommentaries.map((item) => {
+                    const isExp = expanded[item.id];
+                    const text = item.commentary_text || '';
+                    const preview = truncate(text, 200);
+                    const authorName = item.authors?.name || 'Onbekend';
+                    const years = item.authors?.born_year
+                      ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
+                    const era = item.authors?.era;
+                    return (
+                      <div key={item.id} className={`commentary-card${isExp ? ' print-show' : ''}`} onClick={() => toggleExpand(item.id)}>
+                        <div className="commentary-header">
+                          <span className="author-name">{authorName}</span>
+                          {years && <span className="author-years">{years}</span>}
+                          {era && <span className="author-era" style={{ color: ERA_COLORS[era] }}>{era}</span>}
+                        </div>
+                        <div className="commentary-text">
+                          {isExp
+                            ? splitIntoParagraphs(text).map((para, pi) => (
+                                <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
+                              ))
+                            : expandInlineRefs(preview)
+                          }
+                        </div>
+                        {text.length > 200 && (
+                          <div className="expand-hint">{isExp ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )
+            )}
+
+            {/* ── Tab: Preken ── */}
+            {textTab === 'preken' && (
+              textSermons.length === 0 ? (
+                <div className="empty-text">Geen preken gevonden.</div>
+              ) : (
+                <>
+                  <div className="tr-tab-subtitle">
+                    {textSermonTotal} preken met "{query.trim()}"
+                    {textSermons.length < textSermonTotal && <span className="tr-shown"> (eerste {textSermons.length} getoond)</span>}
+                  </div>
+                  {textSermons.map((s: any) => {
+                    const isExp = expanded[s.id];
+                    const text = s.sermon_text || '';
+                    const preview = truncate(text, 250);
+                    const authorName = s.authors?.name || 'Onbekend';
+                    const years = s.authors?.born_year
+                      ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
+                    const era = s.authors?.era;
+                    return (
+                      <div key={s.id} className="commentary-card" onClick={() => toggleExpand(s.id)}>
+                        <div className="commentary-header">
+                          <span className="author-name">{authorName}</span>
+                          {years && <span className="author-years">{years}</span>}
+                          {era && <span className="author-era" style={{ color: ERA_COLORS[era] }}>{era}</span>}
+                        </div>
+                        <div className="sermon-title-row">
+                          <span className="sermon-title">{s.title}</span>
+                          {s.year_preached && <span className="year-badge">{s.year_preached}</span>}
+                        </div>
+                        <div className="commentary-text">
+                          {isExp
+                            ? splitIntoParagraphs(text).map((para, pi) => (
+                                <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
+                              ))
+                            : expandInlineRefs(preview)
+                          }
+                        </div>
+                        {text.length > 250 && (
+                          <div className="expand-hint">{isExp ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}</div>
+                        )}
+                        <Link to={`/preek/${s.id}`} className="bl-read-link" onClick={e => e.stopPropagation()}>
+                          Lees volledige preek →
+                        </Link>
+                      </div>
+                    );
+                  })}
+                </>
+              )
+            )}
           </div>
         )}
 
         {/* Welcome (alleen als idle) */}
-        {verses.length === 0 && textResults.length === 0 && !loading && !error && (
+        {verses.length === 0 && textResults.length === 0 && textCommentaries.length === 0 && textSermons.length === 0 && !loading && !error && (
           <>
             {/* Thema chips */}
             <div className="theme-chips">

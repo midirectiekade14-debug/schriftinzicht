@@ -3,10 +3,19 @@ import { Link } from 'react-router-dom';
 import { thematicPlan, getWeekOfYear, SEASON_COLORS } from '../data/thematicPlan';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
-import { truncate } from '../lib/truncate';
 
 const PROGRESS_KEY = 'si-thematic-progress';
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+
+const NT_BOOKS = new Set([
+  'Mattheüs', 'Markus', 'Lukas', 'Johannes', 'Handelingen',
+  'Romeinen', 'Korinthe', '1 Korinthe', '2 Korinthe',
+  'Galaten', 'Efeze', 'Filippenzen', 'Kolossenzen',
+  '1 Thessalonicenzen', '2 Thessalonicenzen',
+  '1 Timotheüs', '2 Timotheüs', 'Titus', 'Filemon',
+  'Hebreeën', 'Jakobus', '1 Petrus', '2 Petrus',
+  '1 Johannes', '2 Johannes', '3 Johannes', 'Judas', 'Openbaring',
+]);
 
 type Progress = Record<string, boolean>;
 
@@ -19,11 +28,8 @@ function getDayOfWeek(): number {
   return d === 0 ? 6 : d - 1; // ma=0, zo=6
 }
 
-interface OudvaderSnippet {
-  authorName: string;
-  era: string | null;
-  text: string;
-  verseRef: string;
+interface VerseSnippet {
+  verses: { verse: number; text: string }[];
 }
 
 export default function Leesrooster() {
@@ -32,7 +38,7 @@ export default function Leesrooster() {
   const [progress, setProgress] = useState<Progress>(loadProgress);
   const [bookIdMap, setBookIdMap] = useState<Record<string, string>>({});
   const [expandedDay, setExpandedDay] = useState<number>(getDayOfWeek());
-  const [snippets, setSnippets] = useState<Record<number, OudvaderSnippet | null>>({});
+  const [snippets, setSnippets] = useState<Record<number, VerseSnippet | null>>({});
 
   const week = thematicPlan.find(w => w.week === weekNum) || thematicPlan[0];
   const seasonColor = SEASON_COLORS[week.season] || 'var(--text-faint)';
@@ -48,12 +54,12 @@ export default function Leesrooster() {
     });
   }, []);
 
-  // Fetch oudvader snippets for readings of the current week
+  // Fetch kernverzen (actual Bible verses) for highlight ranges
   useEffect(() => {
     if (!Object.keys(bookIdMap).length) return;
 
     async function fetchSnippets() {
-      const results: Record<number, OudvaderSnippet | null> = {};
+      const results: Record<number, VerseSnippet | null> = {};
 
       for (let i = 0; i < week.readings.length; i++) {
         const r = week.readings[i];
@@ -61,61 +67,19 @@ export default function Leesrooster() {
         if (!uuid) { results[i] = null; continue; }
 
         try {
-          // Get verse IDs for the highlight range
           const { data: verses } = await supabase.from('bible_verses')
-            .select('id')
+            .select('verse, text_sv')
             .eq('book_id', uuid)
             .eq('chapter', r.chapter)
             .gte('verse', r.highlightStart)
-            .lte('verse', r.highlightEnd);
+            .lte('verse', r.highlightEnd)
+            .order('verse', { ascending: true });
 
-          if (!verses?.length) { results[i] = null; continue; }
-          const verseIds = verses.map(v => v.id);
-
-          // Try commentaries first
-          const { data: comms } = await supabase.from('commentaries')
-            .select('commentary_text, authors(name, era)')
-            .in('verse_id', verseIds)
-            .eq('scope', 'verse')
-            .limit(1);
-
-          if (comms?.length) {
-            const c = comms[0] as any;
-            results[i] = {
-              authorName: c.authors?.name || 'Onbekend',
-              era: c.authors?.era || null,
-              text: c.commentary_text || '',
-              verseRef: `${r.book} ${r.chapter}:${r.highlightStart}${r.highlightEnd !== r.highlightStart ? '-' + r.highlightEnd : ''}`,
-            };
-            continue;
+          if (verses?.length) {
+            results[i] = { verses: verses.map(v => ({ verse: v.verse, text: v.text_sv })) };
+          } else {
+            results[i] = null;
           }
-
-          // Fallback: try sermons
-          const { data: chapterVerses } = await supabase.from('bible_verses')
-            .select('id')
-            .eq('book_id', uuid)
-            .eq('chapter', r.chapter);
-
-          if (chapterVerses?.length) {
-            const chapterIds = chapterVerses.map(v => v.id);
-            const { data: sermons } = await supabase.from('sermons')
-              .select('sermon_text, title, authors(name, era)')
-              .in('start_verse_id', chapterIds)
-              .limit(1);
-
-            if (sermons?.length) {
-              const s = sermons[0] as any;
-              results[i] = {
-                authorName: s.authors?.name || 'Onbekend',
-                era: s.authors?.era || null,
-                text: s.sermon_text || '',
-                verseRef: s.title || `${r.book} ${r.chapter}`,
-              };
-              continue;
-            }
-          }
-
-          results[i] = null;
         } catch {
           results[i] = null;
         }
@@ -188,7 +152,7 @@ export default function Leesrooster() {
             const isExpanded = expandedDay === i;
             const uuid = bookIdMap[reading.book];
             const linkTo = uuid
-              ? `/bijbel/${uuid}/${reading.chapter}?name=${encodeURIComponent(reading.book)}`
+              ? `/bijbel/${uuid}/${reading.chapter}?name=${encodeURIComponent(reading.book)}&hlStart=${reading.verseStart}&hlEnd=${reading.verseEnd}`
               : '/bijbel';
             const verseRange = reading.verseStart === reading.verseEnd
               ? `${reading.verseStart}`
@@ -197,6 +161,7 @@ export default function Leesrooster() {
               ? `vs. ${reading.highlightStart}`
               : `vs. ${reading.highlightStart}-${reading.highlightEnd}`;
             const snippet = snippets[i];
+            const isNT = NT_BOOKS.has(reading.book);
 
             return (
               <div key={i} className={`lr-day-card${done ? ' done' : ''}${isExpanded ? ' expanded' : ''}`}>
@@ -205,7 +170,10 @@ export default function Leesrooster() {
                     aria-label={done ? 'Gelezen' : 'Markeer als gelezen'} />
                   <div className="lr-day-info">
                     <span className="lr-day-name">{DAYS[i]}</span>
-                    <span className="lr-reading-ref">{reading.book} {reading.chapter}:{verseRange}</span>
+                    <span className="lr-reading-ref">
+                      <span className={`lr-testament-badge ${isNT ? 'nt' : 'ot'}`}>{isNT ? 'NT' : 'OT'}</span>
+                      {reading.book} {reading.chapter}:{verseRange}
+                    </span>
                   </div>
                   <span className="lr-expand-icon">{isExpanded ? '\u25B2' : '\u25BC'}</span>
                 </div>
@@ -216,14 +184,15 @@ export default function Leesrooster() {
                       <span className="lr-highlight-label">Kernverzen: {highlightRange}</span>
                     </div>
 
-                    {/* Oudvader snippet */}
+                    {/* Kernverzen */}
                     {snippet && (
-                      <div className="lr-snippet">
-                        <div className="lr-snippet-header">
-                          <span className="lr-snippet-author">{snippet.authorName}</span>
-                          {snippet.era && <span className="lr-snippet-era">{snippet.era}</span>}
-                        </div>
-                        <p className="lr-snippet-text">&ldquo;{truncate(snippet.text, 250)}&rdquo;</p>
+                      <div className="lr-kernverzen">
+                        {snippet.verses.map(v => (
+                          <p key={v.verse} className="lr-kernvers">
+                            <sup className="lr-kernvers-num">{v.verse}</sup>
+                            {v.text}
+                          </p>
+                        ))}
                       </div>
                     )}
 

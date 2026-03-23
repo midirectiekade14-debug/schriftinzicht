@@ -54,8 +54,8 @@ const AUTHORS_SAMPLE = [
 
 const BIBLE_SAMPLE = [
   { name: 'Genesis', ch: 50 }, { name: 'Psalmen', ch: 150 },
-  { name: 'Jesaja', ch: 66 }, { name: 'Marcus', ch: 16 },
-  { name: 'Lucas', ch: 24 }, { name: 'Johannes', ch: 21 },
+  { name: 'Jesaja', ch: 66 }, { name: 'Markus', ch: 16 },
+  { name: 'Lukas', ch: 24 }, { name: 'Johannes', ch: 21 },
   { name: 'Romeinen', ch: 16 }, { name: 'Hebre\u00EBen', ch: 13 },
 ];
 

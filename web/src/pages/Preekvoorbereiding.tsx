@@ -6,6 +6,7 @@ import { parseReference, formatRef, getSuggestions, displayBookName, expandInlin
 import type { BibleVerse, Commentary, Kanttekening } from '../types/database';
 import { truncate } from '../lib/truncate';
 import SelectionPopup from '../components/SelectionPopup';
+import { useVoiceSearch } from '../hooks/useVoiceSearch';
 
 interface CommentaryWithAuthor extends Omit<Commentary, 'authors'> {
   authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
@@ -73,6 +74,7 @@ export default function Preekvoorbereiding() {
     try { return JSON.parse(localStorage.getItem('si-detail-bookmarks') || '[]'); } catch { return []; }
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const voice = useVoiceSearch((text) => { setQuery(text); });
 
   const currentNote = notes[refLabel] || '';
   const isBookmarked = bookmarks.some(b => b.ref === refLabel);
@@ -201,8 +203,12 @@ export default function Preekvoorbereiding() {
         }
       }
       const deduped = Array.from(seen.values());
-      // Sorteer op vers-volgorde (verse_id), niet op jaar
-      deduped.sort((a, b) => a.verse_id.localeCompare(b.verse_id));
+      // Sorteer op vers-volgorde, niet op jaar
+      deduped.sort((a, b) => {
+        const va = vData.find(v => v.id === a.verse_id);
+        const vb = vData.find(v => v.id === b.verse_id);
+        return (va?.verse ?? 0) - (vb?.verse ?? 0);
+      });
 
       // Filter sermons: keep those whose range overlaps with selected verses
       const verseIdSet = new Set(verseIds);
@@ -241,8 +247,9 @@ export default function Preekvoorbereiding() {
       setCatechismLinks(catLinks);
 
       setActiveTab('verklaringen');
-    } catch {
-      setError('Fout bij het zoeken.');
+    } catch (err) {
+      console.error('Preekvoorbereiding search error:', err);
+      setError('Fout bij het zoeken: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }
@@ -306,6 +313,22 @@ export default function Preekvoorbereiding() {
               onFocus={() => setShowSuggestions(true)}
               autoComplete="off"
             />
+            {voice.supported && (
+              <button
+                className={`search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                onClick={voice.toggle}
+                title="Spraakherkenning"
+                type="button"
+                style={{ position: 'static', transform: 'none', padding: '4px 8px' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+            )}
             <button onClick={() => { search(); setShowSuggestions(false); }}>Zoek</button>
           </div>
           {showSuggestions && suggestions.length > 0 && (

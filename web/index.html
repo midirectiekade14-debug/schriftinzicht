@@ -12,7 +12,6 @@
     <meta property="og:description" content="Vergelijk bijbelverklaringen van 16 theologen op een chronologische tijdlijn." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://schriftinzicht.nl" />
-    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Libre+Franklin:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -24,12 +23,13 @@
           var decoded = l.search.slice(1).split('&').map(function(s) {
             return s.replace(/~and~/g, '&')
           }).join('?');
-          window.history.replaceState(null, null, l.pathname + decoded + l.hash);
+          var base = l.pathname.replace(/\/+$/, '');
+          window.history.replaceState(null, null, base + decoded + l.hash);
         }
       }(window.location))
     </script>
     <script>
-      // Cleanup: unregister any old service workers
+      // Nuke all service workers and caches — PWA is disabled, nooit meer caching
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
           regs.forEach(function(r) { r.unregister(); });
@@ -37,6 +37,10 @@
         caches.keys().then(function(names) {
           names.forEach(function(name) { caches.delete(name); });
         });
+        // Force update check op elke pageload
+        navigator.serviceWorker.ready.then(function(reg) {
+          reg.unregister().then(function() { location.reload(); });
+        }).catch(function() {});
       }
     </script>
   </head>
