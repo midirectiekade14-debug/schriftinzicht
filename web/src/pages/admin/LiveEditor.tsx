@@ -34,7 +34,7 @@ export default function LiveEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
-  const [iframePath, setIframePath] = useState('/bijbel/genesis/1');
+  const [iframePath, setIframePath] = useState('/bijbel/1/1?name=Genesis');
   const [font, setFont] = useState(FONTS[0].value);
   const [fontSize, setFontSize] = useState(SIZES[1].value);
   const [fontColor, setFontColor] = useState(COLORS[0].value);
@@ -92,7 +92,7 @@ export default function LiveEditor() {
 
   const quickLinks = [
     { label: 'Zoeken', path: '/zoeken' },
-    { label: 'Bijbel', path: '/bijbel/genesis/1' },
+    { label: 'Bijbel', path: '/bijbel/1/1?name=Genesis' },
     { label: 'Catechismus', path: '/catechismus' },
     { label: 'NGB', path: '/belijdenis/ngb' },
     { label: 'DL', path: '/belijdenis/dl' },
@@ -132,7 +132,7 @@ export default function LiveEditor() {
         <div className="adm-live-preview">
           <iframe
             ref={iframeRef}
-            src={`${baseUrl}${iframePath}?edit=1`}
+            src={`${baseUrl}${iframePath}${iframePath.includes('?') ? '&' : '?'}edit=1`}
             key={iframePath}
             title="Site preview"
           />
