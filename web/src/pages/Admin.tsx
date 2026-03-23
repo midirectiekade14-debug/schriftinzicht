@@ -7,13 +7,15 @@ import Authors from './admin/Authors';
 import Content from './admin/Content';
 import Confessions from './admin/Confessions';
 import Catechism from './admin/Catechism';
+import LiveEditor from './admin/LiveEditor';
 
 const ADMIN_EMAILS = ['harm@maatwerkinterieurs.info'];
 
-type Section = 'dashboard' | 'authors' | 'content' | 'confessions' | 'catechism';
+type Section = 'dashboard' | 'live' | 'authors' | 'content' | 'confessions' | 'catechism';
 
 const NAV_ITEMS: { key: Section; label: string; icon: string }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { key: 'live', label: 'Live Editor', icon: '✏' },
   { key: 'authors', label: 'Auteurs', icon: '🖋' },
   { key: 'content', label: 'Tekstbeheer', icon: '📝' },
   { key: 'confessions', label: 'Belijdenissen', icon: '✝' },
@@ -59,6 +61,7 @@ export default function Admin() {
 
         <main className="adm-main">
           {section === 'dashboard' && <Dashboard />}
+          {section === 'live' && <LiveEditor />}
           {section === 'authors' && <Authors />}
           {section === 'content' && <Content />}
           {section === 'confessions' && <Confessions />}

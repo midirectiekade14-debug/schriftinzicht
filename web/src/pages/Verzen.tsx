@@ -307,7 +307,7 @@ export default function Verzen() {
                     }}
                   >
                     <sup className="bijbel-vnum">{v.verse}</sup>
-                    {v.text_sv}
+                    <span data-edit-table="bible_verses" data-edit-id={v.id} data-edit-col="text_sv" data-edit-label={`${bookName} ${chapterNum}:${v.verse}`}>{v.text_sv}</span>
                     {verseMarkers[v.id]?.length > 0 && (
                       <span className="verse-markers">
                         {verseMarkers[v.id].map((m, i) => (
@@ -328,7 +328,7 @@ export default function Verzen() {
                               {kanttekeningen.map((k) => (
                                 <div key={k.id} className="kanttekening-item">
                                   {k.marker && <span className="kant-marker">{k.marker}</span>}
-                                  <span className="kant-text">{expandInlineRefs(k.note_text)}</span>
+                                  <span className="kant-text" data-edit-table="kanttekeningen" data-edit-id={k.id} data-edit-col="note_text" data-edit-label={`Kanttekening ${k.marker || ''}`}>{expandInlineRefs(k.note_text)}</span>
                                   <button
                                     className={`detail-bm-btn ${isDetailBookmarked(k.id) ? 'active' : ''}`}
                                     onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('kanttekening', k.id, k.note_text || '', 'Kanttekening'); }}
@@ -382,7 +382,7 @@ export default function Verzen() {
                                         </svg>
                                       </button>
                                     </div>
-                                    <div className="commentary-text">
+                                    <div className="commentary-text" data-edit-table="commentaries" data-edit-id={c.id} data-edit-col="commentary_text" data-edit-label={`${authorName} — verklaring`}>
                                       {expandInlineRefs(isOpen ? text : preview)}
                                     </div>
                                     {text.length > 200 && (

@@ -163,10 +163,10 @@ export default function Catechismus() {
                       <BookmarkIcon filled={isBookmarked(q.question_number)} />
                     </button>
                   </div>
-                  <div className="question-text">{q.question_text}</div>
+                  <div className="question-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="question_text" data-edit-label={`Vraag ${q.question_number}`}>{q.question_text}</div>
                   <div className="answer-container">
                     <div className="answer-label">Antwoord:</div>
-                    <div className="answer-text">{isOpen ? formatAnswer(answer) : preview}</div>
+                    <div className="answer-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="answer_text" data-edit-label={`Antwoord ${q.question_number}`}>{isOpen ? formatAnswer(answer) : preview}</div>
                     {hasMore && (
                       <div className="expand-hint" onClick={() => toggleExpand(q.id)}>
                         {isOpen ? 'Inklappen \u25B2' : 'Meer lezen \u25BC'}

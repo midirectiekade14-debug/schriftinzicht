@@ -6,6 +6,7 @@ import FontScaleButton from './components/FontScaleButton';
 import ThemeToggle from './components/ThemeToggle';
 import AppSidebar from './components/AppSidebar';
 import ErrorBoundary from './components/ErrorBoundary';
+import EditOverlay from './components/EditOverlay';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 
 /* ── Lazy-loaded pages ── */
@@ -122,6 +123,7 @@ function AppShell() {
 
       <ThemeToggle />
       <FontScaleButton />
+      <EditOverlay />
 
       <nav className="tab-bar">
         {tabs.map((tab) => (

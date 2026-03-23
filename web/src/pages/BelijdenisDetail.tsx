@@ -171,7 +171,7 @@ export default function BelijdenisDetail() {
                     </svg>
                   </button>
                 </div>
-                <div className="bel-article-text" onClick={() => toggleExpand(a.id)}>
+                <div className="bel-article-text" data-edit-table="confession_articles" data-edit-id={a.id} data-edit-col="article_text" data-edit-label={a.title || `Artikel ${a.article_number}`} onClick={() => toggleExpand(a.id)}>
                   {isOpen ? a.article_text : preview}
                 </div>
                 {a.article_text.length > 250 && (
