@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/schriftinzicht/icon.svg" />
+    <link rel="icon" type="image/png" href="/schriftinzicht/icon-192.png" />
+    <link rel="apple-touch-icon" href="/schriftinzicht/icon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0C0A09" />
+    <meta name="description" content="Vier eeuwen bijbelverklaring in één app. Van Luther tot Spurgeon — ontdek wat de oudvaders schreven bij elk vers van de Bijbel." />
+    <meta property="og:title" content="SchriftInzicht — Bijbelverklaringen van de Oudvaders" />
+    <meta property="og:description" content="Vergelijk bijbelverklaringen van 16 theologen op een chronologische tijdlijn." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://schriftinzicht.nl" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Libre+Franklin:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <title>SchriftInzicht</title>
+    <script>
+      // GitHub Pages SPA redirect handler
+      (function(l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search.slice(1).split('&').map(function(s) {
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          var base = l.pathname.replace(/\/+$/, '');
+          window.history.replaceState(null, null, base + decoded + l.hash);
+        }
+      }(window.location))
+    </script>
+    <script>
+      // Nuke all service workers and caches — PWA is disabled, nooit meer caching
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+        caches.keys().then(function(names) {
+          names.forEach(function(name) { caches.delete(name); });
+        });
+        // Force update check op elke pageload
+        navigator.serviceWorker.ready.then(function(reg) {
+          reg.unregister().then(function() { location.reload(); });
+        }).catch(function() {});
+      }
+    </script>
+    <script type="module" crossorigin src="/schriftinzicht/assets/index-oufHVaaV.js"></script>
+    <link rel="modulepreload" crossorigin href="/schriftinzicht/assets/vendor-1b_5OfXG.js">
+    <link rel="modulepreload" crossorigin href="/schriftinzicht/assets/supabase-CpRTRdvQ.js">
+    <link rel="stylesheet" crossorigin href="/schriftinzicht/assets/index-pWzJ61jU.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
