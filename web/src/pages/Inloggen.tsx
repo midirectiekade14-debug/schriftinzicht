@@ -1,15 +1,31 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function Inloggen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('return') || '/zoeken';
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [resetMode, setResetMode] = useState(false);
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) { setError('Vul je e-mailadres in.'); return; }
+    setLoading(true); setError(null); setSuccess(null);
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/schriftinzicht/inloggen`,
+    });
+    if (err) setError(err.message);
+    else setSuccess('Resetlink verstuurd! Check je inbox.');
+    setLoading(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +46,7 @@ export default function Inloggen() {
         else if (msg.includes('rate')) setError('Te veel pogingen. Probeer het later opnieuw.');
         else setError(err.message);
       } else {
-        navigate('/zoeken', { replace: true });
+        navigate(returnTo, { replace: true });
       }
     } else {
       const { error: err } = await supabase.auth.signUp({ email: email.trim(), password });
@@ -78,30 +94,64 @@ export default function Inloggen() {
         </div>
 
         {/* Form */}
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="E-mailadres"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoComplete="email"
-            autoCapitalize="none"
-          />
-          <input
-            type="password"
-            placeholder="Wachtwoord"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          />
+        {resetMode ? (
+          <form className="auth-form" onSubmit={handleReset}>
+            <input
+              type="email"
+              placeholder="E-mailadres"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
+              autoCapitalize="none"
+            />
 
-          {error && <div className="auth-error">{error}</div>}
-          {success && <div className="auth-success">{success}</div>}
+            {error && <div className="auth-error">{error}</div>}
+            {success && <div className="auth-success">{success}</div>}
 
-          <button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? 'Even geduld...' : (mode === 'login' ? 'Inloggen' : 'Registreren')}
-          </button>
-        </form>
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? 'Even geduld...' : 'Resetlink versturen'}
+            </button>
+            <button type="button" className="auth-link" onClick={() => { setResetMode(false); setError(null); setSuccess(null); }}>
+              Terug naar inloggen
+            </button>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={handleSubmit}>
+            <input
+              type="email"
+              placeholder="E-mailadres"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
+              autoCapitalize="none"
+            />
+            <div className="auth-password-wrap">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Wachtwoord"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
+              <button type="button" className="auth-toggle-pw" onClick={() => setShowPassword(!showPassword)} tabIndex={-1}>
+                {showPassword ? '🙈' : '👁'}
+              </button>
+            </div>
+
+            {error && <div className="auth-error">{error}</div>}
+            {success && <div className="auth-success">{success}</div>}
+
+            <button type="submit" className="auth-submit" disabled={loading}>
+              {loading ? 'Even geduld...' : (mode === 'login' ? 'Inloggen' : 'Registreren')}
+            </button>
+
+            {mode === 'login' && (
+              <button type="button" className="auth-link" onClick={() => { setResetMode(true); setError(null); setSuccess(null); }}>
+                Wachtwoord vergeten?
+              </button>
+            )}
+          </form>
+        )}
 
         <button className="auth-skip" onClick={skip}>Doorgaan zonder account</button>
       </div>

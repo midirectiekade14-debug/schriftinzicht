@@ -27,6 +27,7 @@ const Preekvoorbereiding = lazy(() => import('./pages/Preekvoorbereiding'));
 const Bladwijzers = lazy(() => import('./pages/Bladwijzers'));
 const Leesrooster = lazy(() => import('./pages/Leesrooster'));
 const PremiumSuccess = lazy(() => import('./pages/PremiumSuccess'));
+const Admin = lazy(() => import('./pages/Admin'));
 
 /* ── SVG Tab Icons ── */
 const IconZoeken = () => (
@@ -143,6 +144,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/inloggen" element={<Inloggen />} />
+            <Route path="/beheer" element={<Admin />} />
             <Route path="/*" element={<AppShell />} />
           </Routes>
         </Suspense>
