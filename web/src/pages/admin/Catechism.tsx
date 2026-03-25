@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import StyleBar from '../../components/admin/StyleBar';
 
 interface CatechismQuestion {
   id: string;
@@ -18,6 +19,9 @@ export default function Catechism() {
   const [editA, setEditA] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [font, setFont] = useState("'Cormorant Garamond', Georgia, serif");
+  const [fontSize, setFontSize] = useState('15px');
+  const [fontColor, setFontColor] = useState('var(--text, #e7e1d8)');
 
   useEffect(() => { loadQuestions(); }, []);
 
@@ -62,14 +66,18 @@ export default function Catechism() {
           <span className="adm-editor-title">Vraag {editing.question_number} (Zondag {editing.lord_day})</span>
         </div>
 
+        <StyleBar font={font} setFont={setFont} fontSize={fontSize} setFontSize={setFontSize} fontColor={fontColor} setFontColor={setFontColor} />
+
         <label className="adm-form-label">
           <span>Vraag</span>
-          <textarea className="adm-textarea" value={editQ} onChange={e => setEditQ(e.target.value)} rows={4} />
+          <textarea className="adm-textarea" value={editQ} onChange={e => setEditQ(e.target.value)} rows={4}
+            style={{ fontFamily: font, fontSize, color: fontColor }} />
         </label>
 
         <label className="adm-form-label">
           <span>Antwoord</span>
-          <textarea className="adm-textarea" value={editA} onChange={e => setEditA(e.target.value)} rows={10} />
+          <textarea className="adm-textarea" value={editA} onChange={e => setEditA(e.target.value)} rows={10}
+            style={{ fontFamily: font, fontSize, color: fontColor }} />
         </label>
 
         <div className="adm-editor-footer">

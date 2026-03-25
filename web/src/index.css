@@ -5804,13 +5804,43 @@ a.preek-badge:hover {
 }
 .adm-form-grid input:focus, .adm-form-grid select:focus, .adm-form-grid textarea:focus, .adm-form-label input:focus { border-color: #C4956A; }
 .adm-form-grid input::placeholder, .adm-form-label input::placeholder { color: #6B5F53; }
-.adm-form-grid select { cursor: pointer; }
+.adm-form-grid select { cursor: pointer; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A7E72' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+.adm-form-grid select option, .adm-searchbar select option { background: #1a1714; color: #E7E1D8; padding: 8px; }
 .adm-form-grid textarea { font-family: var(--font-serif); line-height: 1.6; resize: vertical; }
 .adm-form-full { grid-column: 1 / -1; }
 
 /* Portrait preview */
 .adm-portrait-preview { display: flex; justify-content: center; }
-.adm-portrait-preview img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(196,149,106,0.2); }
+.adm-portrait-preview img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(196,149,106,0.2); transition: transform 0.15s; }
+.adm-portrait-preview img:hover { transform: scale(1.05); }
+
+/* Portrait zoom modal */
+.adm-portrait-modal {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.adm-portrait-modal-content { display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: default; }
+.adm-portrait-zoom-area {
+  width: 400px; height: 400px; overflow: hidden; border-radius: 12px;
+  border: 1px solid rgba(196,149,106,0.2); background: #111; display: flex; align-items: center; justify-content: center;
+}
+.adm-portrait-zoom-area img { max-width: 100%; max-height: 100%; transition: transform 0.1s; user-select: none; }
+.adm-portrait-zoom-controls {
+  display: flex; align-items: center; gap: 8px;
+}
+.adm-portrait-zoom-controls button {
+  background: rgba(231,225,216,0.08); border: 1px solid rgba(231,225,216,0.15); border-radius: 6px;
+  padding: 6px 14px; color: #E7E1D8; font-size: 13px; cursor: pointer;
+}
+.adm-portrait-zoom-controls button:hover { border-color: #C4956A; color: #C4956A; }
+.adm-portrait-zoom-controls span { font-size: 12px; color: #8A7E72; min-width: 40px; text-align: center; }
+
+/* Author works section */
+.adm-author-works { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(196,149,106,0.1); }
+.adm-author-works h3 { font-family: var(--font-serif); font-size: 15px; font-weight: 600; margin: 0 0 10px; color: #E7E1D8; }
+.adm-author-works-summary {
+  display: flex; gap: 16px; margin-bottom: 12px; font-size: 13px; color: #C4956A; font-weight: 600;
+}
 
 /* Form label (standalone) */
 .adm-form-label {
@@ -5827,6 +5857,9 @@ a.preek-badge:hover {
   flex: 1; background: rgba(231,225,216,0.04); border: 1px solid rgba(231,225,216,0.08);
   border-radius: 8px; padding: 10px 14px; color: #E7E1D8; font-size: 14px;
   font-family: var(--font-sans); outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A7E72' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;
 }
 .adm-searchbar select:focus { border-color: #C4956A; }
 

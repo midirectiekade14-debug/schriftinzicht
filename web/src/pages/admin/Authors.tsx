@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 
 interface Author {
@@ -22,6 +22,13 @@ const EMPTY_AUTHOR: Omit<Author, 'id'> = {
 const ERA_OPTIONS = ['', 'Reformatie', 'Nadere Reformatie', 'Puriteins', '18e eeuw', '19e eeuw', 'Modern'];
 const TRADITION_OPTIONS = ['', 'Gereformeerd', 'Luthers', 'Anglicaans', 'Puritein', 'Baptist'];
 
+interface SourceWork {
+  id: string;
+  title: string;
+  year: number | null;
+  commentary_count?: number;
+}
+
 export default function Authors() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +38,13 @@ export default function Authors() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [searchQ, setSearchQ] = useState('');
+  const [works, setWorks] = useState<SourceWork[]>([]);
+  const [sermonCount, setSermonCount] = useState(0);
+  const [worksLoading, setWorksLoading] = useState(false);
+  const [portraitZoom, setPortraitZoom] = useState(false);
+  const [imgScale, setImgScale] = useState(1);
+  const [imgPos, setImgPos] = useState({ x: 0, y: 0 });
+  const imgDrag = useRef<{ dragging: boolean; startX: number; startY: number; origX: number; origY: number }>({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
 
   useEffect(() => { loadAuthors(); }, []);
 
@@ -41,11 +55,33 @@ export default function Authors() {
     setLoading(false);
   }
 
+  async function loadAuthorWorks(authorId: string) {
+    setWorksLoading(true);
+    const [worksRes, sermonsRes] = await Promise.all([
+      supabase.from('source_works').select('id, title, year').eq('author_id', authorId).order('year'),
+      supabase.from('sermons').select('*', { count: 'exact', head: true }).eq('author_id', authorId),
+    ]);
+    const worksData = worksRes.data || [];
+    // Get commentary counts per work
+    const withCounts = await Promise.all(
+      worksData.map(async (w: any) => {
+        const { count } = await supabase.from('commentaries').select('*', { count: 'exact', head: true }).eq('source_work_id', w.id);
+        return { ...w, commentary_count: count || 0 };
+      })
+    );
+    setWorks(withCounts);
+    setSermonCount(sermonsRes.count || 0);
+    setWorksLoading(false);
+  }
+
   function startEdit(author: Author) {
     setEditing(author);
     setForm({ ...author });
     setIsNew(false);
     setMsg('');
+    setWorks([]);
+    setSermonCount(0);
+    loadAuthorWorks(author.id);
   }
 
   function startNew() {
@@ -144,7 +180,42 @@ export default function Authors() {
           </label>
           {form.portrait_url && (
             <div className="adm-portrait-preview">
-              <img src={form.portrait_url} alt="Portret" onError={e => (e.currentTarget.style.display = 'none')} />
+              <img
+                src={form.portrait_url}
+                alt="Portret"
+                onError={e => (e.currentTarget.style.display = 'none')}
+                onClick={() => { setPortraitZoom(true); setImgScale(1); setImgPos({ x: 0, y: 0 }); }}
+                style={{ cursor: 'zoom-in' }}
+                title="Klik om te vergroten"
+              />
+            </div>
+          )}
+          {portraitZoom && form.portrait_url && (
+            <div className="adm-portrait-modal" onClick={() => setPortraitZoom(false)}>
+              <div className="adm-portrait-modal-content" onClick={e => e.stopPropagation()}>
+                <div
+                  className="adm-portrait-zoom-area"
+                  onWheel={e => { e.preventDefault(); setImgScale(s => Math.max(0.5, Math.min(5, s + (e.deltaY > 0 ? -0.2 : 0.2)))); }}
+                  onMouseDown={e => { imgDrag.current = { dragging: true, startX: e.clientX, startY: e.clientY, origX: imgPos.x, origY: imgPos.y }; }}
+                  onMouseMove={e => { if (!imgDrag.current.dragging) return; setImgPos({ x: imgDrag.current.origX + e.clientX - imgDrag.current.startX, y: imgDrag.current.origY + e.clientY - imgDrag.current.startY }); }}
+                  onMouseUp={() => { imgDrag.current.dragging = false; }}
+                  onMouseLeave={() => { imgDrag.current.dragging = false; }}
+                >
+                  <img
+                    src={form.portrait_url}
+                    alt="Portret"
+                    style={{ transform: `translate(${imgPos.x}px, ${imgPos.y}px) scale(${imgScale})`, cursor: imgDrag.current.dragging ? 'grabbing' : 'grab' }}
+                    draggable={false}
+                  />
+                </div>
+                <div className="adm-portrait-zoom-controls">
+                  <button onClick={() => setImgScale(s => Math.max(0.5, s - 0.25))}>−</button>
+                  <span>{Math.round(imgScale * 100)}%</span>
+                  <button onClick={() => setImgScale(s => Math.min(5, s + 0.25))}>+</button>
+                  <button onClick={() => { setImgScale(1); setImgPos({ x: 0, y: 0 }); }}>Reset</button>
+                  <button onClick={() => setPortraitZoom(false)}>Sluiten</button>
+                </div>
+              </div>
             </div>
           )}
           <label className="adm-form-full">
@@ -152,6 +223,35 @@ export default function Authors() {
             <textarea rows={6} value={form.biography || ''} onChange={e => setForm({ ...form, biography: e.target.value || null })} />
           </label>
         </div>
+
+        {!isNew && editing && (
+          <div className="adm-author-works">
+            <h3>Werken &amp; Content</h3>
+            {worksLoading ? (
+              <div className="adm-section-loading"><div className="spinner" /></div>
+            ) : (
+              <>
+                <div className="adm-author-works-summary">
+                  <span>{works.length} werken</span>
+                  <span>{works.reduce((s, w) => s + (w.commentary_count || 0), 0)} verklaringen</span>
+                  <span>{sermonCount} preken</span>
+                </div>
+                {works.length > 0 && (
+                  <div className="adm-results">
+                    {works.map(w => (
+                      <div key={w.id} className="adm-result" style={{ cursor: 'default' }}>
+                        <span className="adm-result-label">{w.title}</span>
+                        <span className="adm-result-preview">
+                          {[w.year && `${w.year}`, `${w.commentary_count || 0} verklaringen`].filter(Boolean).join(' · ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div className="adm-editor-footer">
           <button className="adm-save" onClick={save} disabled={saving}>{saving ? 'Opslaan…' : 'Opslaan'}</button>

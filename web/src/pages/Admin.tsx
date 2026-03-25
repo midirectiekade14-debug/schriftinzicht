@@ -19,7 +19,7 @@ const NAV_ITEMS: { key: Section; label: string; icon: string }[] = [
   { key: 'authors', label: 'Auteurs', icon: '🖋' },
   { key: 'content', label: 'Tekstbeheer', icon: '📝' },
   { key: 'confessions', label: 'Belijdenissen', icon: '✝' },
-  { key: 'catechism', label: 'Catechismus', icon: '❓' },
+  { key: 'catechism', label: 'Catechismus', icon: '📜' },
 ];
 
 export default function Admin() {

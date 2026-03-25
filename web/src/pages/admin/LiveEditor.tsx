@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import StyleBar from '../../components/admin/StyleBar';
 
 interface EditTarget {
   table: string;
@@ -7,24 +8,6 @@ interface EditTarget {
   col: string;
   label: string;
 }
-
-const FONTS = [
-  { label: 'Serif', value: "'Cormorant Garamond', Georgia, serif" },
-  { label: 'Sans', value: "'Libre Franklin', system-ui, sans-serif" },
-];
-
-const SIZES = [
-  { label: 'S', value: '13px' },
-  { label: 'M', value: '15px' },
-  { label: 'L', value: '18px' },
-  { label: 'XL', value: '22px' },
-];
-
-const COLORS = [
-  { label: 'Tekst', value: 'var(--text, #e7e1d8)' },
-  { label: 'Accent', value: '#C4956A' },
-  { label: 'Gedempt', value: 'var(--text-muted, #8a8278)' },
-];
 
 export default function LiveEditor() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -35,9 +18,9 @@ export default function LiveEditor() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [iframePath, setIframePath] = useState('/bijbel/1/1?name=Genesis');
-  const [font, setFont] = useState(FONTS[0].value);
-  const [fontSize, setFontSize] = useState(SIZES[1].value);
-  const [fontColor, setFontColor] = useState(COLORS[0].value);
+  const [font, setFont] = useState("'Cormorant Garamond', Georgia, serif");
+  const [fontSize, setFontSize] = useState('15px');
+  const [fontColor, setFontColor] = useState('var(--text, #e7e1d8)');
 
   // Listen for edit messages from iframe
   useEffect(() => {
@@ -157,35 +140,7 @@ export default function LiveEditor() {
                 <span className="adm-live-target-meta">{target.table} → {target.col}</span>
               </div>
 
-              {/* Huisstijl opties */}
-              <div className="adm-style-bar">
-                <div className="adm-style-group">
-                  <label>Font</label>
-                  <div className="adm-style-btns">
-                    {FONTS.map(f => (
-                      <button key={f.label} className={font === f.value ? 'active' : ''} onClick={() => setFont(f.value)}
-                        style={{ fontFamily: f.value }}>{f.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="adm-style-group">
-                  <label>Grootte</label>
-                  <div className="adm-style-btns">
-                    {SIZES.map(s => (
-                      <button key={s.label} className={fontSize === s.value ? 'active' : ''} onClick={() => setFontSize(s.value)}>{s.label}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="adm-style-group">
-                  <label>Kleur</label>
-                  <div className="adm-style-btns">
-                    {COLORS.map(c => (
-                      <button key={c.label} className={fontColor === c.value ? 'active' : ''} onClick={() => setFontColor(c.value)}
-                        style={{ color: c.value }}>{c.label}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <StyleBar font={font} setFont={setFont} fontSize={fontSize} setFontSize={setFontSize} fontColor={fontColor} setFontColor={setFontColor} />
 
               <textarea
                 className="adm-textarea"

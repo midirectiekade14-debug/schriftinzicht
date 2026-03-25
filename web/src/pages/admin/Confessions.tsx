@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import StyleBar from '../../components/admin/StyleBar';
 
 interface ConfessionArticle {
   id: number;
@@ -21,6 +22,9 @@ export default function Confessions() {
   const [editTitle, setEditTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [font, setFont] = useState("'Cormorant Garamond', Georgia, serif");
+  const [fontSize, setFontSize] = useState('15px');
+  const [fontColor, setFontColor] = useState('var(--text, #e7e1d8)');
 
   useEffect(() => { loadArticles(); }, []);
 
@@ -72,7 +76,10 @@ export default function Confessions() {
           <input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Artikeltitel…" />
         </label>
 
-        <textarea className="adm-textarea" value={editText} onChange={e => setEditText(e.target.value)} rows={16} />
+        <StyleBar font={font} setFont={setFont} fontSize={fontSize} setFontSize={setFontSize} fontColor={fontColor} setFontColor={setFontColor} />
+
+        <textarea className="adm-textarea" value={editText} onChange={e => setEditText(e.target.value)} rows={16}
+          style={{ fontFamily: font, fontSize, color: fontColor }} />
 
         <div className="adm-editor-footer">
           <button className="adm-save" onClick={saveEdit} disabled={saving}>{saving ? 'Opslaan…' : 'Opslaan'}</button>

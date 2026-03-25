@@ -19,7 +19,7 @@ const STAT_ITEMS: { key: keyof Stats; label: string; icon: string }[] = [
   { key: 'kanttekeningen', label: 'Kanttekeningen', icon: '🔖' },
   { key: 'sermons', label: 'Preken', icon: '🎙' },
   { key: 'confession_articles', label: 'Belijdenisartikelen', icon: '✝' },
-  { key: 'catechism_questions', label: 'Catechismusvragen', icon: '❓' },
+  { key: 'catechism_questions', label: 'Catechismusvragen', icon: '📜' },
   { key: 'cross_references', label: 'Kruisverwijzingen', icon: '🔗' },
 ];
 
