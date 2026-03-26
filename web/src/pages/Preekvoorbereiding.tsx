@@ -7,6 +7,7 @@ import type { BibleVerse, Commentary, Kanttekening } from '../types/database';
 import { truncate } from '../lib/truncate';
 import SelectionPopup from '../components/SelectionPopup';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 interface CommentaryWithAuthor extends Omit<Commentary, 'authors'> {
   authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
@@ -55,6 +56,7 @@ function loadBookmarks(): Bookmark[] {
 }
 
 export default function Preekvoorbereiding() {
+  useDocumentTitle('Preekvoorbereiding');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

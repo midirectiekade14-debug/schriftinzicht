@@ -7,6 +7,7 @@ import Logo from '../components/Logo';
 import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 /** Split commentary text into readable paragraphs.
  *  Priority: double newlines > single newlines > sentence-based splitting for long blocks. */
@@ -192,6 +193,26 @@ function saveSavedList(list: SavedVerse[]) {
 // Cache book name → id lookups to avoid repeated queries
 const bookIdCache = new Map<string, string>();
 
+// In-memory search result cache (TTL 5 min)
+const CACHE_TTL = 5 * 60 * 1000;
+const searchCache = new Map<string, { data: any; ts: number }>();
+
+function getCached(key: string) {
+  const entry = searchCache.get(key);
+  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  searchCache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  searchCache.set(key, { data, ts: Date.now() });
+  // Limit cache size
+  if (searchCache.size > 50) {
+    const oldest = searchCache.keys().next().value;
+    if (oldest) searchCache.delete(oldest);
+  }
+}
+
 interface DetailBookmark {
   type: 'kanttekening' | 'verklaring';
   id: string;
@@ -211,6 +232,7 @@ interface CommentaryWithAuthor extends Omit<Commentary, 'authors'> {
 }
 
 export default function Zoeken() {
+  useDocumentTitle('Zoeken');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -339,6 +361,22 @@ export default function Zoeken() {
       setLoading(true); setError(null); setShowSuggestions(false);
       setVerses([]); setCommentaries([]); setKanttekeningen([]); setCrossRefs([]); setTextResults([]); setTextTotal(0); setTextCollapsed({}); setTextCommentaries([]); setTextCommTotal(0); setTextSermons([]); setTextSermonTotal(0); setTextTab('bijbel');
       addToHistory(q.trim());
+
+      // Check cache first
+      const cacheKey = `text:${q.trim().toLowerCase()}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        setTextTotal(cached.textTotal); setTextResults(cached.textResults);
+        setTextCommTotal(cached.textCommTotal); setTextCommentaries(cached.textCommentaries);
+        setTextSermonTotal(cached.textSermonTotal); setTextSermons(cached.textSermons);
+        setTextTab(cached.textTab);
+        if (!cached.textResults.length && !cached.textCommentaries.length && !cached.textSermons.length) {
+          setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+        }
+        setLoading(false);
+        return;
+      }
+
       try {
         // Parallel: count+fetch verses, commentaries, sermons
         const [verseCount, versesRes, commCount, commRes, sermonCount, sermonRes] = await Promise.all([
@@ -376,22 +414,31 @@ export default function Zoeken() {
             .limit(100),
         ]);
 
-        setTextTotal(verseCount.count || 0);
+        const textTotal = verseCount.count || 0;
         if (versesRes.error) throw versesRes.error;
-        setTextResults((versesRes.data || []) as BibleVerse[]);
+        const textResults = (versesRes.data || []) as BibleVerse[];
+        const textCommTotal = commCount.count || 0;
+        const textCommentaries = (commRes.data || []) as CommentaryWithAuthor[];
+        const textSermonTotal = sermonCount.count || 0;
+        const textSermons = sermonRes.data || [];
 
-        setTextCommTotal(commCount.count || 0);
-        setTextCommentaries((commRes.data || []) as CommentaryWithAuthor[]);
-
-        setTextSermonTotal(sermonCount.count || 0);
-        setTextSermons(sermonRes.data || []);
+        setTextTotal(textTotal);
+        setTextResults(textResults);
+        setTextCommTotal(textCommTotal);
+        setTextCommentaries(textCommentaries);
+        setTextSermonTotal(textSermonTotal);
+        setTextSermons(textSermons);
 
         // Auto-select first tab with results
-        if (versesRes.data?.length) setTextTab('bijbel');
-        else if (commRes.data?.length) setTextTab('verklaringen');
-        else if (sermonRes.data?.length) setTextTab('preken');
+        const textTab = textResults.length ? 'bijbel' : textCommentaries.length ? 'verklaringen' : 'preken';
+        if (textResults.length) setTextTab('bijbel');
+        else if (textCommentaries.length) setTextTab('verklaringen');
+        else if (textSermons.length) setTextTab('preken');
 
-        if (!versesRes.data?.length && !commRes.data?.length && !sermonRes.data?.length) {
+        // Cache results
+        setCache(cacheKey, { textTotal, textResults, textCommTotal, textCommentaries, textSermonTotal, textSermons, textTab });
+
+        if (!textResults.length && !textCommentaries.length && !textSermons.length) {
           setError(`Geen resultaten gevonden voor "${q.trim()}".`);
         }
       } catch {

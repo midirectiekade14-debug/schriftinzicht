@@ -66,7 +66,12 @@ export default function AppSidebar() {
           Bladwijzers
         </div>
         {pvBm.length === 0 && blBm.length === 0 && bbBm.length === 0 ? (
-          <div className="as-empty">Geen bladwijzers</div>
+          <div className="as-empty">
+            <span style={{ fontSize: 13 }}>Nog geen bladwijzers</span>
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', display: 'block', marginTop: 4 }}>
+              Sla bijbelhoofdstukken of verklaringen op via het bladwijzer-icoon.
+            </span>
+          </div>
         ) : (
           <>
             {bbBm.map((b, i) => (
@@ -113,7 +118,12 @@ export default function AppSidebar() {
       <div className="as-section">
         <div className="as-title">Aantekeningen</div>
         {noteEntries.length === 0 ? (
-          <div className="as-empty">Geen notities</div>
+          <div className="as-empty">
+            <span style={{ fontSize: 13 }}>Geen notities</span>
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', display: 'block', marginTop: 4 }}>
+              Selecteer tekst bij de preekvoorbereiding om notities te maken.
+            </span>
+          </div>
         ) : (
           noteEntries.slice(0, 8).map(([ref, text]) => (
             <Link key={ref} to={`/zoeken?q=${encodeURIComponent(ref)}`} className="as-note" style={{ textDecoration: 'none', color: 'inherit' }}>

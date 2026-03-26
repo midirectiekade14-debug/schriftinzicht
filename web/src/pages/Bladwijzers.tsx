@@ -4,6 +4,7 @@ import Logo from '../components/Logo';
 import PremiumGate from '../components/PremiumGate';
 import { truncate } from '../lib/truncate';
 import { displayBookName } from '../lib/parseReference';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 interface PvBookmark {
   ref: string;
@@ -82,6 +83,7 @@ const SLUG_LABELS: Record<string, string> = {
 };
 
 export default function Bladwijzers() {
+  useDocumentTitle('Bladwijzers');
   const [pvBookmarks, setPvBookmarks] = useState<PvBookmark[]>(loadPv);
   const [belBookmarks, setBelBookmarks] = useState<BelBookmark[]>(loadBel);
   const [catBookmarks, setCatBookmarks] = useState<CatBookmark[]>(loadCat);

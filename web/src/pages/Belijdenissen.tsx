@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const CONFESSIONS = [
   {
@@ -26,6 +27,7 @@ const CONFESSIONS = [
 ];
 
 export default function Belijdenissen() {
+  useDocumentTitle('Belijdenisgeschriften');
   return (
     <>
       <div className="screen-header">

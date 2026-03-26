@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { truncate } from '../lib/truncate';
 import type { Author } from '../types/database';
 import Logo from '../components/Logo';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 interface SourceWork {
   id: string;
@@ -47,6 +48,7 @@ const ERA_COLORS: Record<string, string> = {
 };
 
 export default function Oudvaders() {
+  useDocumentTitle('Oudvaders');
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

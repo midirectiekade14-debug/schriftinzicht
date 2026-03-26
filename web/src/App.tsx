@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useState, useRef, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import InstallPrompt from './components/InstallPrompt';
 import OfflineBanner from './components/OfflineBanner';
 import FontScaleButton from './components/FontScaleButton';
@@ -77,16 +77,70 @@ const IconOudvaders = () => (
     <circle cx="10" cy="6" r="3" /><path d="M4 17C4 13.5 6.5 11 10 11C13.5 11 16 13.5 16 17" />
   </svg>
 );
+const IconMeer = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+    <circle cx="4" cy="10" r="1.5" fill="currentColor" /><circle cx="10" cy="10" r="1.5" fill="currentColor" /><circle cx="16" cy="10" r="1.5" fill="currentColor" />
+  </svg>
+);
 
 const tabs = [
   { path: '/zoeken', label: 'Zoeken', Icon: IconZoeken },
   { path: '/bijbel', label: 'Bijbel', Icon: IconBijbel },
-  { path: '/preekvoorbereiding', label: 'Preekvoorbereiding', Icon: IconPreek },
-  { path: '/belijdenissen', label: 'Belijdenissen', Icon: IconBelijdenissen },
-  { path: '/bladwijzers', label: 'Bladwijzers', Icon: IconBladwijzers },
+  { path: '/preekvoorbereiding', label: 'Preek', Icon: IconPreek },
   { path: '/leesrooster', label: 'Leesrooster', Icon: IconLeesrooster },
-  { path: '/oudvaders', label: 'Oudvaders', Icon: IconOudvaders },
 ];
+
+const moreItems = [
+  { path: '/belijdenissen', label: 'Belijdenissen', Icon: IconBelijdenissen },
+  { path: '/oudvaders', label: 'Oudvaders', Icon: IconOudvaders },
+  { path: '/bladwijzers', label: 'Bladwijzers', Icon: IconBladwijzers },
+  { path: '/instellingen', label: 'Instellingen', Icon: IconLeesrooster },
+];
+
+function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isMoreActive = moreItems.some(m => location.pathname.startsWith(m.path));
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div className="more-menu-wrapper" ref={ref}>
+      {open && (
+        <div className="more-menu">
+          {moreItems.map((item) => (
+            <button
+              key={item.path}
+              className={`more-menu-item${location.pathname.startsWith(item.path) ? ' active' : ''}`}
+              onClick={() => { navigate(item.path); setOpen(false); }}
+            >
+              <span className="tab-icon" aria-hidden="true"><item.Icon /></span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        className={`tab-bar-btn${isMoreActive ? ' active' : ''}`}
+        onClick={() => setOpen(!open)}
+        aria-label="Meer opties"
+        aria-expanded={open}
+      >
+        <span className="tab-icon" aria-hidden="true"><IconMeer /></span>
+        Meer
+      </button>
+    </div>
+  );
+}
 
 function AppShell() {
   const location = useLocation();
@@ -95,11 +149,12 @@ function AppShell() {
 
   return (
     <div className="app">
+      <a href="#main-content" className="skip-link">Ga naar inhoud</a>
       <InstallPrompt />
       <OfflineBanner />
       <div className="app-body">
         {!isBoeklezer && <AppSidebar />}
-        <div className="app-main">
+        <div className="app-main" id="main-content">
           <Routes>
             <Route path="/zoeken" element={<Zoeken />} />
             <Route path="/bijbel" element={<Bijbel />} />
@@ -132,6 +187,7 @@ function AppShell() {
             {tab.label}
           </NavLink>
         ))}
+        <MoreMenu />
       </nav>
     </div>
   );

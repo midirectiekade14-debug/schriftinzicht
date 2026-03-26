@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase';
 import type { BibleBook } from '../types/database';
 import Logo from '../components/Logo';
 import { displayBookName } from '../lib/parseReference';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function Bijbel() {
+  useDocumentTitle('Bijbel');
   const navigate = useNavigate();
   const [books, setBooks] = useState<BibleBook[]>([]);
   const [loading, setLoading] = useState(true);

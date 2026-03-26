@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const THEME_KEY = 'si-theme';
 
 export default function Instellingen() {
+  useDocumentTitle('Instellingen');
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
 

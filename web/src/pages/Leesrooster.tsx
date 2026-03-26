@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { thematicPlan, getWeekOfYear, SEASON_COLORS } from '../data/thematicPlan';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const PROGRESS_KEY = 'si-thematic-progress';
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -33,6 +34,7 @@ interface VerseSnippet {
 }
 
 export default function Leesrooster() {
+  useDocumentTitle('Leesrooster');
   const currentWeekNum = getWeekOfYear();
   const [weekNum, setWeekNum] = useState(currentWeekNum);
   const [progress, setProgress] = useState<Progress>(loadProgress);
