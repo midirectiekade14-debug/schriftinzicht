@@ -125,10 +125,10 @@ function AppShell() {
       <FontScaleButton />
       <EditOverlay />
 
-      <nav className="tab-bar">
+      <nav className="tab-bar" aria-label="Hoofdnavigatie">
         {tabs.map((tab) => (
           <NavLink key={tab.path} to={tab.path}>
-            <span className="tab-icon"><tab.Icon /></span>
+            <span className="tab-icon" aria-hidden="true"><tab.Icon /></span>
             {tab.label}
           </NavLink>
         ))}

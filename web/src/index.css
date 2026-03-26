@@ -173,6 +173,8 @@ body {
   height: 64px;
   padding-bottom: max(4px, env(safe-area-inset-bottom, 4px));
   flex-shrink: 0;
+  position: relative;
+  z-index: 200;
 }
 
 .tab-bar a {
@@ -5269,10 +5271,11 @@ a.preek-badge:hover {
 }
 
 .premium-gate p {
-  font-size: 14px;
-  color: var(--text-muted);
+  font-size: 15px;
+  color: var(--text-sec);
   font-family: var(--font-sans);
   margin-bottom: var(--sp-md);
+  line-height: 1.5;
 }
 
 .premium-gate-btn {
