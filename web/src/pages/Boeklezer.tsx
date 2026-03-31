@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { truncate } from '../lib/truncate';
+import { ERA_COLORS } from '../lib/constants';
 
 interface CommentaryEntry {
   id: string;
@@ -54,13 +55,6 @@ function cleanPreview(text: string): string {
   s = s.replace(/^Pagina \d+ van \d+\s*/gm, '');
   return s.trim();
 }
-const ERA_COLORS: Record<string, string> = {
-  'Reformatie': '#D4A574',
-  'Nadere Reformatie': '#8BB89E',
-  'Puriteinse periode': '#7BA8C8',
-  '19e eeuw': '#C8A870',
-  'Kerkvaders': '#B8A090',
-};
 
 interface SourceWork {
   id: string;
@@ -387,7 +381,10 @@ export default function Boeklezer() {
       const { data: bookIndex } = await bookCheckQuery;
       const hasBookEntries = (bookIndex || []).length > 0;
 
-      if (hasBookEntries) {
+      // When deep-linking to a specific commentary/verse, use verse-scope for precise navigation
+      const hasDeepLink = !!(deepCommentaryId || deepVerseId);
+
+      if (hasBookEntries && !hasDeepLink) {
         // Build TOC from index
         const booksMap = new Map<string, number>();
         for (const b of (bookIndex || [])) {
@@ -465,7 +462,7 @@ export default function Boeklezer() {
     };
 
     loadData();
-  }, [authorId, selectedSource, sourcesLoaded, filterBook, filterChapter]);
+  }, [authorId, selectedSource, sourcesLoaded, filterBook, filterChapter, deepCommentaryId, deepVerseId]);
 
   // Build pages
   const pages = useMemo((): PageData[] => {
@@ -482,10 +479,10 @@ export default function Boeklezer() {
     let targetIdx = -1;
 
     if (deepCommentaryId) {
-      targetIdx = pages.findIndex(p => p.entryIds.includes(deepCommentaryId));
+      targetIdx = pages.findIndex(p => p.entryIds.some(id => String(id) === deepCommentaryId));
     }
     if (targetIdx < 0 && deepVerseId) {
-      targetIdx = pages.findIndex(p => p.verseIds.includes(deepVerseId));
+      targetIdx = pages.findIndex(p => p.verseIds.some(id => String(id) === deepVerseId));
     }
     if (targetIdx < 0 && deepPage) {
       const p = parseInt(deepPage, 10) - 1;
