@@ -8,6 +8,8 @@ import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
+import { getStorage, setStorage } from '../lib/storage';
 
 /** Split commentary text into readable paragraphs.
  *  Priority: double newlines > single newlines > sentence-based splitting for long blocks. */
@@ -146,13 +148,6 @@ function useDailyVerse() {
   return daily;
 }
 
-const ERA_COLORS: Record<string, string> = {
-  'Kerkvaders': 'var(--era-kerkvaders)',
-  'Reformatie': 'var(--era-reformatie)',
-  'Nadere Reformatie': 'var(--era-nadere)',
-  'Puriteinse periode': 'var(--era-puriteinse)',
-  '19e eeuw': 'var(--era-19e)',
-};
 
 const POPULAR_THEMES = [
   { label: 'Genade', query: 'genade' },
@@ -178,16 +173,16 @@ interface SavedVerse {
 }
 
 function loadHistory(): string[] {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+  return getStorage<string[]>(HISTORY_KEY, []);
 }
 function saveHistory(list: string[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, MAX_HISTORY)));
+  setStorage(HISTORY_KEY, list.slice(0, MAX_HISTORY));
 }
 function loadSaved(): SavedVerse[] {
-  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch { return []; }
+  return getStorage<SavedVerse[]>(SAVED_KEY, []);
 }
 function saveSavedList(list: SavedVerse[]) {
-  localStorage.setItem(SAVED_KEY, JSON.stringify(list));
+  setStorage(SAVED_KEY, list);
 }
 
 // Cache book name → id lookups to avoid repeated queries
@@ -224,12 +219,9 @@ interface DetailBookmark {
 }
 
 function loadDetailBookmarks(): DetailBookmark[] {
-  try { return JSON.parse(localStorage.getItem(DETAIL_BM_KEY) || '[]'); } catch { return []; }
+  return getStorage<DetailBookmark[]>(DETAIL_BM_KEY, []);
 }
 
-interface CommentaryWithAuthor extends Omit<Commentary, 'authors'> {
-  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null };
-}
 
 export default function Zoeken() {
   useDocumentTitle('Zoeken');
@@ -277,7 +269,7 @@ export default function Zoeken() {
       updated = [{ type, id, text: text.slice(0, 200), authorName, verseRef: refLabel, sourceUrl, ts: Date.now() }, ...detailBookmarks];
     }
     setDetailBookmarks(updated);
-    localStorage.setItem(DETAIL_BM_KEY, JSON.stringify(updated));
+    setStorage(DETAIL_BM_KEY, updated);
   };
 
   // Autofill suggestions
@@ -881,6 +873,7 @@ export default function Zoeken() {
                         <div className="commentary-header">
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}
+                          {item.year_written && <span className="year-badge">{item.year_written}</span>}
                           <button
                             className={`detail-bm-btn ${isDetailBookmarked(item.id) ? 'active' : ''}`}
                             onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('verklaring', item.id, text, authorName); }}
@@ -1100,6 +1093,7 @@ export default function Zoeken() {
                         <div className="commentary-header">
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}
+                          {item.year_written && <span className="year-badge">{item.year_written}</span>}
                           {era && <span className="author-era" style={{ color: ERA_COLORS[era] }}>{era}</span>}
                         </div>
                         <div className="commentary-text">

@@ -487,7 +487,7 @@ body {
 .comm-verse-sv {
   display: block;
   font-family: var(--font-serif);
-  font-size: 12px;
+  font-size: 14px;
   font-style: italic;
   color: var(--text-muted);
   margin-top: 2px;
@@ -1430,13 +1430,14 @@ body {
 
 /* Cross-references */
 .cross-refs-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: var(--sp-xs);
 }
 
 .cross-ref-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
   align-items: baseline;
   gap: var(--sp-sm);
   background: var(--surface);
@@ -1458,7 +1459,6 @@ body {
   font-weight: 600;
   color: var(--accent);
   white-space: nowrap;
-  flex-shrink: 0;
   font-family: var(--font-sans);
 }
 
@@ -1467,7 +1467,6 @@ body {
   color: var(--text-muted);
   line-height: 1.5;
   font-family: var(--font-serif);
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1483,7 +1482,7 @@ body {
   border: 1px solid rgba(196,149,106,0.1);
   padding: 1px 6px;
   border-radius: 4px;
-  flex-shrink: 0;
+  justify-self: end;
   font-family: var(--font-sans);
   font-weight: 500;
 }
