@@ -8,10 +8,9 @@ import { truncate } from '../lib/truncate';
 import SelectionPopup from '../components/SelectionPopup';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
+import { getStorage, setStorage } from '../lib/storage';
 
-interface CommentaryWithAuthor extends Omit<Commentary, 'authors'> {
-  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
-}
 interface CrossRefRow {
   id: string; votes: number; to_verse_end_id: string | null;
   to_verse: { id: string; book_id: string; chapter: number; verse: number; text_sv: string; bible_books: { name: string; abbreviation: string } };
@@ -34,13 +33,6 @@ const BOOKMARKS_KEY = 'si-pv-bookmarks';
 type Tab = 'verklaringen' | 'kanttekeningen' | 'kruisverwijzingen' | 'preken' | 'catechismus' | 'notities';
 
 const ERA_ORDER = ['Reformatie', 'Nadere Reformatie', 'Puriteinse periode', '19e eeuw', 'Kerkvaders'];
-const ERA_COLORS: Record<string, string> = {
-  'Reformatie': 'var(--era-reformatie)',
-  'Nadere Reformatie': 'var(--era-nadere)',
-  'Puriteinse periode': 'var(--era-puriteinse)',
-  '19e eeuw': 'var(--era-19e)',
-  'Kerkvaders': 'var(--era-kerkvaders)',
-};
 
 interface Bookmark {
   ref: string;
@@ -49,10 +41,10 @@ interface Bookmark {
 }
 
 function loadNotes(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); } catch { return {}; }
+  return getStorage<Record<string, string>>(NOTES_KEY, {});
 }
 function loadBookmarks(): Bookmark[] {
-  try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'); } catch { return []; }
+  return getStorage<Bookmark[]>(BOOKMARKS_KEY, []);
 }
 
 export default function Preekvoorbereiding() {
@@ -72,9 +64,9 @@ export default function Preekvoorbereiding() {
   const [refLabel, setRefLabel] = useState('');
   const [notes, setNotes] = useState<Record<string, string>>(loadNotes);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(loadBookmarks);
-  const [detailBookmarks, setDetailBookmarks] = useState<{ type: string; id: string; text: string; authorName: string; verseRef: string; ts: number }[]>(() => {
-    try { return JSON.parse(localStorage.getItem('si-detail-bookmarks') || '[]'); } catch { return []; }
-  });
+  const [detailBookmarks, setDetailBookmarks] = useState<{ type: string; id: string; text: string; authorName: string; verseRef: string; ts: number }[]>(() =>
+    getStorage<{ type: string; id: string; text: string; authorName: string; verseRef: string; ts: number }[]>('si-detail-bookmarks', [])
+  );
   const [showSuggestions, setShowSuggestions] = useState(false);
   const voice = useVoiceSearch((text) => { setQuery(text); });
 
@@ -97,7 +89,7 @@ export default function Preekvoorbereiding() {
       const existing = notes[refLabel] || '';
       const updated = { ...notes, [refLabel]: existing + noteAddition };
       setNotes(updated);
-      localStorage.setItem(NOTES_KEY, JSON.stringify(updated));
+      setStorage(NOTES_KEY, updated);
     };
 
     document.addEventListener('mouseup', handleSelection);
@@ -108,7 +100,7 @@ export default function Preekvoorbereiding() {
     const updated = { ...notes, [refLabel]: text };
     if (!text.trim()) delete updated[refLabel];
     setNotes(updated);
-    localStorage.setItem(NOTES_KEY, JSON.stringify(updated));
+    setStorage(NOTES_KEY, updated);
   };
 
   const toggleBookmark = () => {
@@ -119,13 +111,13 @@ export default function Preekvoorbereiding() {
       updated = [{ ref: refLabel, query: query.trim(), ts: Date.now() }, ...bookmarks];
     }
     setBookmarks(updated);
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
+    setStorage(BOOKMARKS_KEY, updated);
   };
 
   const removeBookmark = (ref: string) => {
     const updated = bookmarks.filter(b => b.ref !== ref);
     setBookmarks(updated);
-    localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
+    setStorage(BOOKMARKS_KEY, updated);
   };
 
   // Autocomplete
@@ -315,23 +307,35 @@ export default function Preekvoorbereiding() {
               onFocus={() => setShowSuggestions(true)}
               autoComplete="off"
             />
-            {voice.supported && (
-              <button
-                className={`search-voice${voice.listening ? ' search-voice-active' : ''}`}
-                onClick={voice.toggle}
-                title="Spraakherkenning"
-                type="button"
-                style={{ position: 'static', transform: 'none', padding: '4px 8px' }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
+            <div className="search-actions">
+              {query && (
+                <button className="search-action-btn search-clear" onClick={() => setQuery('')} title="Wissen" type="button">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              )}
+              {voice.supported && (
+                <button
+                  className={`search-action-btn search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                  onClick={voice.toggle}
+                  title="Spraakherkenning"
+                  type="button"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </button>
+              )}
+              <button className="search-submit-btn" onClick={() => { search(); setShowSuggestions(false); }} type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
                 </svg>
               </button>
-            )}
-            <button onClick={() => { search(); setShowSuggestions(false); }}>Zoek</button>
+            </div>
           </div>
           {showSuggestions && suggestions.length > 0 && (
             <div className="ac-dropdown">
@@ -496,7 +500,7 @@ export default function Preekvoorbereiding() {
                                             ? detailBookmarks.filter(b => b.id !== c.id)
                                             : [{ type: 'verklaring' as const, id: c.id, text: text.slice(0, 200), authorName, verseRef: refLabel, sourceUrl: `/preekvoorbereiding?q=${encodeURIComponent(refLabel)}`, ts: Date.now() }, ...detailBookmarks];
                                           setDetailBookmarks(updated);
-                                          localStorage.setItem('si-detail-bookmarks', JSON.stringify(updated));
+                                          setStorage('si-detail-bookmarks', updated);
                                         }}
                                         title="Bladwijzer"
                                       >
