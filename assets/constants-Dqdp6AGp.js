@@ -1,0 +1,1 @@
+const e={Kerkvaders:"var(--era-kerkvaders)",Reformatie:"var(--era-reformatie)","Nadere Reformatie":"var(--era-nadere)","Puriteinse periode":"var(--era-puriteinse)","19e eeuw":"var(--era-19e)"},r={Kerkvaders:"#B8A090",Reformatie:"#D4A574","Nadere Reformatie":"#8BB89E","Puriteinse periode":"#7BA8C8","19e eeuw":"#C8A870"};export{r as E,e as a};
