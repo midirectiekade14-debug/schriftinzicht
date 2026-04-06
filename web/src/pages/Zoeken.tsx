@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { parseReference, formatRef, getSuggestions, navigateRef, displayBookName, expandInlineRefs, type BibleRef } from '../lib/parseReference';
-import type { BibleVerse, Commentary, Kanttekening } from '../types/database';
+import type { BibleVerse, Kanttekening } from '../types/database';
 import Logo from '../components/Logo';
 import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
@@ -406,8 +406,10 @@ export default function Zoeken() {
             .limit(100),
         ]);
 
-        const textTotal = verseCount.count || 0;
         if (versesRes.error) throw versesRes.error;
+        if (commRes.error) throw commRes.error;
+        if (sermonRes.error) throw sermonRes.error;
+        const textTotal = verseCount.count || 0;
         const textResults = (versesRes.data || []) as BibleVerse[];
         const textCommTotal = commCount.count || 0;
         const textCommentaries = (commRes.data || []) as CommentaryWithAuthor[];

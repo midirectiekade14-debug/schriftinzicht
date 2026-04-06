@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { parseReference, formatRef, getSuggestions, displayBookName, expandInlineRefs } from '../lib/parseReference';
-import type { BibleVerse, Commentary, Kanttekening } from '../types/database';
+import type { BibleVerse, Kanttekening } from '../types/database';
 import { truncate } from '../lib/truncate';
 import SelectionPopup from '../components/SelectionPopup';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';

@@ -212,6 +212,20 @@ export function parseReference(input: string): BibleRef | null {
     }
   }
 
+  // ── PATTERN 6: Book + chapter only: "Psalm 23", "Genesis 1", "Rom 8" ──
+  // Returns verseStart=1, verseEnd=999 to fetch entire chapter
+  {
+    const m = normalized.match(
+      /^(.+?)\s+(\d+)$/i
+    );
+    if (m) {
+      const book = resolveBook(m[1]);
+      if (book) {
+        return { book, chapter: parseInt(m[2], 10), verseStart: 1, verseEnd: 999 };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -319,6 +333,10 @@ export function expandInlineRefs(text: string): string {
  * Format a BibleRef back to a display string.
  */
 export function formatRef(ref: BibleRef): string {
+  // Whole-chapter reference (verseEnd=999 is sentinel for "all verses")
+  if (ref.verseStart === 1 && ref.verseEnd >= 999) {
+    return `${displayBookName(ref.book)} ${ref.chapter}`;
+  }
   const range = ref.verseEnd > ref.verseStart
     ? `${ref.verseStart}\u2013${ref.verseEnd}`
     : `${ref.verseStart}`;

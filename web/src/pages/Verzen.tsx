@@ -1,14 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { BibleVerse, Kanttekening, Commentary } from '../types/database';
+import type { BibleVerse, Kanttekening } from '../types/database';
 import { truncate } from '../lib/truncate';
 import { displayBookName, expandInlineRefs } from '../lib/parseReference';
 import SelectionPopup from '../components/SelectionPopup';
-
-interface CommentaryWithAuthor extends Omit<Commentary, 'authors'> {
-  authors: { name: string; born_year: number | null; died_year: number | null } | null;
-}
+import { type CommentaryWithAuthor } from '../lib/constants';
 
 interface CrossRefRow {
   id: string;
