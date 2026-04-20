@@ -33,7 +33,7 @@ interface SiblingSermon {
 const CHARS_PER_PAGE = 2400;
 
 function cleanTitle(t: string): string {
-  let s = t.replace(/^\d+[\.\)]\s*/, '');
+  let s = t.replace(/^\d+[.)]\s*/, '');
   if (s.length > 5 && s === s.toUpperCase()) {
     s = s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
   }
@@ -48,10 +48,14 @@ export default function Preek() {
   const [prevSermon, setPrevSermon] = useState<SiblingSermon | null>(null);
   const [nextSermon, setNextSermon] = useState<SiblingSermon | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
     setLoading(true);
     setCurrentPage(0);
+  }
+
+  useEffect(() => {
     supabase
       .from('sermons')
       .select('id, title, sermon_text, source_collection, year_preached, word_count, author_id, authors(name, born_year, died_year, portrait_url), start_verse:bible_verses!start_verse_id(book_id, chapter, verse, bible_books(name))')

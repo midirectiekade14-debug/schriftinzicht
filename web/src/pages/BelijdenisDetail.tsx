@@ -29,6 +29,10 @@ function loadBookmarks(): Bookmark[] {
   try { return JSON.parse(localStorage.getItem(BM_KEY) || '[]'); } catch { return []; }
 }
 
+function nowTs(): number {
+  return Date.now();
+}
+
 export default function BelijdenisDetail() {
   const { slug } = useParams();
   const [articles, setArticles] = useState<Article[]>([]);
@@ -36,15 +40,20 @@ export default function BelijdenisDetail() {
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(loadBookmarks);
+  const [prevSlug, setPrevSlug] = useState(slug);
   const title = SLUG_TITLES[slug || ''] || 'Belijdenis';
+
+  const SLUG_IDS: Record<string, number> = { ngb: 2, dl: 3 };
+  const confessionId = slug ? SLUG_IDS[slug] : undefined;
+
+  if (prevSlug !== slug) {
+    setPrevSlug(slug);
+    setLoading(!!confessionId);
+  }
 
   useEffect(() => {
     if (!slug) return;
-    setLoading(true);
-
-    const SLUG_IDS: Record<string, number> = { ngb: 2, dl: 3 };
-    const confessionId = SLUG_IDS[slug];
-    if (!confessionId) { setLoading(false); return; }
+    if (!confessionId) return;
 
     supabase
       .from('confession_articles')
@@ -64,7 +73,7 @@ export default function BelijdenisDetail() {
         );
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, confessionId]);
 
   const toggleExpand = (id: string) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -78,8 +87,9 @@ export default function BelijdenisDetail() {
     if (isBookmarked(articleNum)) {
       updated = bookmarks.filter(b => !(b.slug === slug && b.articleNum === articleNum));
     } else {
+      const ts = nowTs();
       updated = [
-        { slug: slug || '', articleNum, title: articleTitle || `Artikel ${articleNum}`, ts: Date.now() },
+        { slug: slug || '', articleNum, title: articleTitle || `Artikel ${articleNum}`, ts },
         ...bookmarks,
       ];
     }

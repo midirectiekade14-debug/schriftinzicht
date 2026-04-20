@@ -34,7 +34,7 @@ export default function EditOverlay() {
         col,
         label,
         text,
-      }, '*');
+      }, window.location.origin);
     }
 
     function handleMouseOver(e: MouseEvent) {
@@ -64,10 +64,11 @@ export default function EditOverlay() {
     };
   }, [editMode]);
 
-  // Listen for refresh commands from parent
+  // Listen for refresh commands from parent (same-origin only)
   useEffect(() => {
     if (!editMode) return;
     function handleMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === 'si-refresh') {
         window.location.reload();
       }

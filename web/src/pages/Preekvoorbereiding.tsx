@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { parseReference, formatRef, getSuggestions, displayBookName, expandInlineRefs } from '../lib/parseReference';
@@ -47,9 +47,67 @@ function loadBookmarks(): Bookmark[] {
   return getStorage<Bookmark[]>(BOOKMARKS_KEY, []);
 }
 
+/**
+ * Detect LEERREDE/PREDIKATIE structure in commentary_text and render
+ * title / tekstquote / body as distinct visual blocks.
+ */
+function renderCommentaryBody(text: string): React.ReactNode {
+  const expanded = expandInlineRefs(text);
+  const lines = expanded.split('\n');
+
+  let titleEnd = -1;
+  const titleRegex = /^(\d+\.\s+)?(LEERREDE|PREDIKATIE|PREDICATIE|PREEK|VERKLARING|OVERDENKING)\b/i;
+  if (lines[0] && titleRegex.test(lines[0].trim())) {
+    titleEnd = 0;
+    for (let i = 1; i < Math.min(lines.length, 4); i++) {
+      const t = lines[i].trim();
+      if (!t) break;
+      const letters = t.replace(/[^A-Za-z]/g, '');
+      if (letters && letters === letters.toUpperCase()) titleEnd = i;
+      else break;
+    }
+  }
+
+  const title = titleEnd >= 0 ? lines.slice(0, titleEnd + 1).join(' ').trim() : null;
+  const rest = titleEnd >= 0 ? lines.slice(titleEnd + 1) : lines;
+
+  // Strip leading blank lines
+  while (rest.length && !rest[0].trim()) rest.shift();
+
+  let tekst: string | null = null;
+  if (rest[0]?.trim().replace(/\s+/g, '').toLowerCase() === 'tekst:') {
+    rest.shift();
+    const tekstLines: string[] = [];
+    while (rest.length) {
+      const line = rest[0];
+      if (!line.trim()) { rest.shift(); break; }
+      if (/^\d+\.\s+(Vraag|Antwoord)\b/.test(line.trim())) break;
+      tekstLines.push(line);
+      rest.shift();
+    }
+    tekst = tekstLines.join(' ').trim() || null;
+  }
+
+  const bodyText = rest.join('\n').trim();
+
+  return (
+    <>
+      {title && <h4 className="pv-comm-title">{title.replace(/\.$/, '')}</h4>}
+      {tekst && (
+        <blockquote className="pv-comm-tekst">
+          <span className="pv-comm-tekst-label">Tekst</span>
+          <span>{tekst}</span>
+        </blockquote>
+      )}
+      {bodyText && <div className="pv-comm-body">{bodyText}</div>}
+    </>
+  );
+}
+
 export default function Preekvoorbereiding() {
   useDocumentTitle('Preekvoorbereiding');
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get('q') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verses, setVerses] = useState<BibleVerse[]>([]);
@@ -138,13 +196,24 @@ export default function Preekvoorbereiding() {
       if (!books?.length) { setError(`Boek "${ref.book}" niet gevonden.`); setLoading(false); return; }
       const bookId = books[0].id;
 
-      const { data: vData } = await supabase.from('bible_verses')
+      let { data: vData } = await supabase.from('bible_verses')
         .select('*, bible_books(name, abbreviation)')
         .eq('book_id', bookId)
         .eq('chapter', ref.chapter)
         .gte('verse', ref.verseStart)
         .lte('verse', ref.verseEnd)
         .order('verse', { ascending: true });
+
+      // Fallback: clamp verseStart > last verse to the actual last verse of the chapter.
+      if (!vData?.length && ref.verseStart > 1) {
+        const { data: lastVerse } = await supabase.from('bible_verses')
+          .select('*, bible_books(name, abbreviation)')
+          .eq('book_id', bookId)
+          .eq('chapter', ref.chapter)
+          .order('verse', { ascending: false })
+          .limit(1);
+        if (lastVerse?.length) vData = lastVerse;
+      }
 
       if (!vData?.length) { setError('Geen verzen gevonden voor deze referentie.'); setLoading(false); return; }
       setVerses(vData as BibleVerse[]);
@@ -160,7 +229,11 @@ export default function Preekvoorbereiding() {
 
       const chapterVerseIds = (chapterVerses || []).map(v => v.id);
 
-      // Fetch all data in parallel
+      // Fetch all data in parallel. Log per-query errors so partial data still surfaces
+      // and we don't silently mask failures in individual tabs.
+      const logQueryError = (label: string, err: unknown) => {
+        if (err) console.warn(`[Preekvoorbereiding] ${label} query failed:`, err);
+      };
       const [commRes, kantRes, crossRes, sermonRes, catRes] = await Promise.all([
         supabase.from('commentaries')
           .select('*, authors(name, born_year, died_year, era)')
@@ -180,11 +253,17 @@ export default function Preekvoorbereiding() {
               .in('start_verse_id', chapterVerseIds)
               .order('year_preached', { ascending: true })
               .limit(50)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [], error: null }),
         supabase.from('catechism_proof_texts')
           .select('note, catechism_questions(question_number, lord_day, question_text, answer_text)')
           .in('verse_id', verseIds),
       ]);
+
+      logQueryError('commentaries', (commRes as { error?: unknown }).error);
+      logQueryError('kanttekeningen', (kantRes as { error?: unknown }).error);
+      logQueryError('cross_references', (crossRes as { error?: unknown }).error);
+      logQueryError('sermons', (sermonRes as { error?: unknown }).error);
+      logQueryError('catechism_proof_texts', (catRes as { error?: unknown }).error);
 
       // Deduplicate commentaries per author per verse
       const allComm = (commRes.data || []) as CommentaryWithAuthor[];
@@ -206,8 +285,9 @@ export default function Preekvoorbereiding() {
 
       // Filter sermons: keep those whose range overlaps with selected verses
       const verseIdSet = new Set(verseIds);
-      const allSermons = (sermonRes.data || []) as any[];
-      const matchingSermons = allSermons.filter((s: any) => {
+      type SermonRangeRow = SermonRow & { start_verse_id: string; end_verse_id: string | null };
+      const allSermons = (sermonRes.data || []) as unknown as SermonRangeRow[];
+      const matchingSermons = allSermons.filter((s) => {
         // If start_verse_id is in our selection, it's a match
         if (verseIdSet.has(s.start_verse_id)) return true;
         // If sermon has end_verse_id and start is in this chapter, check overlap
@@ -230,7 +310,8 @@ export default function Preekvoorbereiding() {
       // Extract catechism links (deduplicated)
       const catLinks: CatechismLink[] = [];
       const seenQ = new Set<number>();
-      for (const row of (catRes.data || []) as any[]) {
+      type CatechismRow = { note: string | null; catechism_questions: CatechismLink | null };
+      for (const row of (catRes.data || []) as unknown as CatechismRow[]) {
         const q = row.catechism_questions;
         if (q && !seenQ.has(q.question_number)) {
           seenQ.add(q.question_number);
@@ -243,7 +324,15 @@ export default function Preekvoorbereiding() {
       setActiveTab('verklaringen');
     } catch (err) {
       console.error('Preekvoorbereiding search error:', err);
-      setError('Fout bij het zoeken: ' + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      // Network / fetch failure → actionable message
+      if (/fetch|network|failed to fetch/i.test(msg)) {
+        setError('Geen verbinding met de server. Controleer je internet en probeer opnieuw.');
+      } else if (/jwt|auth|unauthorized/i.test(msg)) {
+        setError('Sessie verlopen. Herlaad de pagina om door te gaan.');
+      } else {
+        setError(`Fout bij het zoeken: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -487,10 +576,17 @@ export default function Preekvoorbereiding() {
                                 const preview = truncate(text, 300);
                                 const v = verses.find(vv => vv.id === c.verse_id);
                                 const vLabel = v ? `vs. ${v.verse}` : '';
+                                const vBookName = v?.bible_books?.name || '';
                                 return (
                                   <div key={c.id} className="pv-comm-card" onClick={() => setExpandedComm(prev => ({ ...prev, [c.id]: !prev[c.id] }))}>
                                     <div className="pv-comm-top">
-                                      {vLabel && <span className="pv-comm-verse-label">{vLabel}</span>}
+                                      {vLabel && v && (
+                                        <Link
+                                          to={`/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`}
+                                          className="pv-comm-verse-label"
+                                          onClick={e => e.stopPropagation()}
+                                        >{vLabel}</Link>
+                                      )}
                                       <button
                                         className={`detail-bm-btn ${detailBookmarks.some(b => b.id === c.id) ? 'active' : ''}`}
                                         onClick={(e) => {
@@ -509,11 +605,13 @@ export default function Preekvoorbereiding() {
                                         </svg>
                                       </button>
                                     </div>
-                                    <div className="commentary-text">{expandInlineRefs(isOpen ? text : preview)}</div>
+                                    <div className="commentary-text">
+                                      {isOpen ? renderCommentaryBody(text) : expandInlineRefs(preview)}
+                                    </div>
                                     {text.length > 300 && (
                                       <div className="expand-hint">{isOpen ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}</div>
                                     )}
-                                    <Link to={`/boeklezer/${c.author_id}?commentaryId=${c.id}&verseId=${c.verse_id}`}
+                                    <Link to={`/boeklezer/${c.author_id}?commentaryId=${c.id}&verseId=${c.verse_id}&from=pv&q=${encodeURIComponent(query)}`}
                                       className="bl-read-link" onClick={e => e.stopPropagation()}>
                                       Lees in boekvorm →
                                     </Link>
@@ -569,9 +667,15 @@ export default function Preekvoorbereiding() {
                   <div className="pv-kant-list">
                     {kanttekeningen.map(k => {
                       const v = verses.find(vv => vv.id === k.verse_id);
+                      const vBookName = v?.bible_books?.name || '';
                       return (
                         <div key={k.id} className="kanttekening-item">
-                          {v && <span className="pv-kant-verse">vs. {v.verse}</span>}
+                          {v && (
+                            <Link
+                              to={`/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`}
+                              className="pv-kant-verse"
+                            >vs. {v.verse}</Link>
+                          )}
                           {k.marker && <span className="kant-marker">{k.marker}</span>}
                           <span className="kant-text">{expandInlineRefs(k.note_text)}</span>
                         </div>

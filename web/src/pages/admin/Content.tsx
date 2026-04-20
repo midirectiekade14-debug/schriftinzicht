@@ -10,6 +10,24 @@ interface TableConfig {
   select: string;
 }
 
+interface ContentRow {
+  id: string;
+  text_sv?: string;
+  commentary_text?: string;
+  note_text?: string;
+  sermon_text?: string;
+  chapter?: number;
+  verse?: number;
+  bible_books?: { name: string } | null;
+  authors?: { name: string } | null;
+  year_written?: number | null;
+  marker?: string | null;
+  verse_id?: string;
+  title?: string | null;
+  year_preached?: number | null;
+  [key: string]: unknown;
+}
+
 const TABLES: Record<TableName, TableConfig> = {
   bible_verses: { label: 'Bijbelverzen', textCol: 'text_sv', select: 'id, text_sv, chapter, verse, bible_books(name)' },
   commentaries: { label: 'Verklaringen', textCol: 'commentary_text', select: 'id, commentary_text, year_written, authors(name)' },
@@ -24,7 +42,7 @@ const BULK_PATTERNS = [
   { label: 'Lege regels inkorten', find: /\n{3,}/g, replace: '\n\n', desc: 'Max 1 lege regel' },
 ];
 
-function getDisplayLabel(row: any, table: TableName): string {
+function getDisplayLabel(row: ContentRow, table: TableName): string {
   switch (table) {
     case 'bible_verses': return `${displayBookName(row.bible_books?.name || '')} ${row.chapter}:${row.verse}`;
     case 'commentaries': return `${row.authors?.name || 'Onbekend'} (${row.year_written || '?'})`;
@@ -36,10 +54,10 @@ function getDisplayLabel(row: any, table: TableName): string {
 
 export default function Content() {
   const [table, setTable] = useState<TableName>('bible_verses');
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<ContentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQ, setSearchQ] = useState('');
-  const [editRow, setEditRow] = useState<any | null>(null);
+  const [editRow, setEditRow] = useState<ContentRow | null>(null);
   const [editText, setEditText] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
@@ -53,13 +71,13 @@ export default function Content() {
     setLoading(true); setEditRow(null); setSaveMsg('');
     const cfg = TABLES[table];
     const { data } = await supabase.from(table).select(cfg.select).ilike(cfg.textCol, `%${searchQ.trim()}%`).limit(50);
-    setRows(data || []);
+    setRows((data || []) as unknown as ContentRow[]);
     setLoading(false);
   }, [table, searchQ]);
 
-  const startEdit = (row: any) => {
+  const startEdit = (row: ContentRow) => {
     setEditRow(row);
-    setEditText(row[TABLES[table].textCol] || '');
+    setEditText((row[TABLES[table].textCol] as string) || '');
     setSaveMsg('');
   };
 
@@ -91,7 +109,7 @@ export default function Content() {
     const cfg = TABLES[table];
     const changes: typeof previewChanges = [];
     for (const row of rows) {
-      const original = row[cfg.textCol] || '';
+      const original = (row[cfg.textCol] as string) || '';
       const fixed = original.replace(pattern.find, pattern.replace);
       if (fixed !== original) changes.push({ id: row.id, label: getDisplayLabel(row, table), before: original.slice(0, 120), after: fixed.slice(0, 120) });
     }
@@ -103,7 +121,7 @@ export default function Content() {
     setSaving(true);
     let count = 0;
     for (const row of rows) {
-      const original = row[cfg.textCol] || '';
+      const original = (row[cfg.textCol] as string) || '';
       const fixed = original.replace(pattern.find, pattern.replace);
       if (fixed !== original) {
         const { error } = await supabase.from(table).update({ [cfg.textCol]: fixed }).eq('id', row.id);
@@ -147,7 +165,7 @@ export default function Content() {
           <div className="adm-results-info">{rows.length} resultaten in {TABLES[table].label}</div>
           <div className="adm-results">
             {rows.map(row => {
-              const text = row[TABLES[table].textCol] || '';
+              const text = (row[TABLES[table].textCol] as string) || '';
               return (
                 <div key={row.id} className="adm-result" onClick={() => startEdit(row)}>
                   <span className="adm-result-label">{getDisplayLabel(row, table)}</span>

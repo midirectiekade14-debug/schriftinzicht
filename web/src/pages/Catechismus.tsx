@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { truncate } from '../lib/truncate';
+import { displayBookName } from '../lib/parseReference';
 import type { CatechismQuestion } from '../types/database';
 
 interface SundaySection {
   title: string;
   questions: CatechismQuestion[];
+}
+
+interface ProofText {
+  id: number;
+  bookId: string;
+  bookName: string;
+  chapter: number;
+  verse: number;
 }
 
 const BOOKMARKS_KEY = 'si-cat-bookmarks';
@@ -20,6 +30,10 @@ interface CatBookmark {
 
 function loadBookmarks(): CatBookmark[] {
   try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'); } catch { return []; }
+}
+
+function nowTs(): number {
+  return Date.now();
 }
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
@@ -59,32 +73,57 @@ export default function Catechismus() {
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [bookmarks, setBookmarks] = useState<CatBookmark[]>(loadBookmarks);
+  const [proofTexts, setProofTexts] = useState<Record<string, ProofText[]>>({});
 
   useEffect(() => {
-    supabase
-      .from('catechism_questions')
-      .select('*')
-      .order('question_number', { ascending: true })
-      .then(({ data, error: err }) => {
-        if (err) { setError('Kon catechismus niet laden.'); setLoading(false); return; }
-        if (data) {
-          const grouped: Record<number, CatechismQuestion[]> = {};
-          for (const q of data) {
-            const sunday = q.lord_day || 0;
-            if (!grouped[sunday]) grouped[sunday] = [];
-            grouped[sunday].push(q);
-          }
-          setSections(
-            Object.entries(grouped)
-              .sort(([a], [b]) => Number(a) - Number(b))
-              .map(([sunday, questions]) => ({
-                title: Number(sunday) > 0 ? `Zondag ${sunday}` : 'Overig',
-                questions,
-              }))
-          );
+    (async () => {
+      const [qRes, pRes] = await Promise.all([
+        supabase.from('catechism_questions').select('*').order('question_number', { ascending: true }),
+        supabase.from('catechism_proof_texts')
+          .select('id, question_id, bible_verses!verse_id(book_id, chapter, verse, bible_books(name))')
+          .order('id', { ascending: true }),
+      ]);
+
+      if (qRes.error) { setError('Kon catechismus niet laden.'); setLoading(false); return; }
+
+      if (qRes.data) {
+        const grouped: Record<number, CatechismQuestion[]> = {};
+        for (const q of qRes.data) {
+          const sunday = q.lord_day || 0;
+          if (!grouped[sunday]) grouped[sunday] = [];
+          grouped[sunday].push(q);
         }
-        setLoading(false);
-      });
+        setSections(
+          Object.entries(grouped)
+            .sort(([a], [b]) => Number(a) - Number(b))
+            .map(([sunday, questions]) => ({
+              title: Number(sunday) > 0 ? `Zondag ${sunday}` : 'Overig',
+              questions,
+            }))
+        );
+      }
+
+      if (pRes.data) {
+        type Row = { id: number; question_id: number; bible_verses: { book_id: string; chapter: number; verse: number; bible_books: { name: string } | null } | null };
+        const byQ: Record<string, ProofText[]> = {};
+        for (const row of pRes.data as unknown as Row[]) {
+          const v = row.bible_verses;
+          if (!v) continue;
+          const qid = String(row.question_id);
+          if (!byQ[qid]) byQ[qid] = [];
+          byQ[qid].push({
+            id: row.id,
+            bookId: String(v.book_id),
+            bookName: v.bible_books?.name || '',
+            chapter: v.chapter,
+            verse: v.verse,
+          });
+        }
+        setProofTexts(byQ);
+      }
+
+      setLoading(false);
+    })();
   }, []);
 
   const toggleExpand = (id: string) => {
@@ -98,7 +137,7 @@ export default function Catechismus() {
     if (isBookmarked(q.question_number)) {
       updated = bookmarks.filter(b => b.questionNumber !== q.question_number);
     } else {
-      updated = [{ questionNumber: q.question_number, lordDay: q.lord_day, questionText: q.question_text, ts: Date.now() }, ...bookmarks];
+      updated = [{ questionNumber: q.question_number, lordDay: q.lord_day, questionText: q.question_text, ts: nowTs() }, ...bookmarks];
     }
     setBookmarks(updated);
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
@@ -173,6 +212,22 @@ export default function Catechismus() {
                       </div>
                     )}
                   </div>
+                  {(isOpen || !hasMore) && proofTexts[String(q.id)]?.length > 0 && (
+                    <div className="cat-proofs">
+                      <div className="cat-proofs-label">Bewijsteksten</div>
+                      <div className="cat-proofs-list">
+                        {proofTexts[String(q.id)].map(p => (
+                          <Link
+                            key={p.id}
+                            to={`/bijbel/${p.bookId}/${p.chapter}?name=${encodeURIComponent(p.bookName)}&hlStart=${p.verse}&hlEnd=${p.verse}`}
+                            className="cat-proof-ref"
+                          >
+                            {displayBookName(p.bookName)} {p.chapter}:{p.verse}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -31,6 +31,17 @@ interface BookEntry {
   };
 }
 
+interface BookIndexRow {
+  id: string;
+  verse_id: string;
+  scope: string;
+  bible_verses: {
+    chapter: number;
+    verse: number;
+    bible_books: { name: string; book_order: number };
+  };
+}
+
 interface SideCommentary {
   id: string;
   author_id: string;
@@ -51,9 +62,24 @@ function cleanPreview(text: string): string {
   s = s.replace(/^Legenda\s+Blauw[\s\S]*?(?=\n[A-Z][a-z])/m, '');
   // Strip publisher lines
   s = s.replace(/^(?:DE GROOT GOUDRIAAN[\s\S]*?(?:NUR \d+)|Ongewijzigde fotografische herdruk[\s\S]*?(?:NUR \d+)|Uit het Latijn vertaald[\s\S]*?(?:NUR \d+))\n*/im, '');
-  // Strip "Pagina X van Y" lines
-  s = s.replace(/^Pagina \d+ van \d+\s*/gm, '');
+  // Strip "Pagina X van Y" markers anywhere in the text
+  s = s.replace(/(^|\s)Pagina\s+\d+\s+van\s+\d+\s*/gmi, '$1');
+  // Strip link emoji 🔗 (with optional VS16 selector) and navigational residue
+  s = s.replace(/\uD83D\uDD17\uFE0F?\s*/g, '');
+  s = s.replace(/Return\s+to\s+top\s+of\s+page/gi, '');
   return s.trim();
+}
+
+/** Clean a single paragraph for display — handles emoji residue, page markers, navigational cruft. */
+function cleanParagraph(p: string): string {
+  return p
+    .replace(/\uD83D\uDD17\uFE0F?/g, '')
+    .replace(/Return\s+to\s+top\s+of\s+page/gi, '')
+    .replace(/^Pagina\s+\d+\s+van\s+\d+\s*$/i, '')
+    .replace(/(^|\s)Pagina\s+\d+\s+van\s+\d+(?=\s|$)/gi, '$1')
+    .replace(/([\u0590-\u05FF\u0370-\u03FF])([A-Za-z])/g, '$1 $2')
+    .replace(/([A-Za-z])([\u0590-\u05FF\u0370-\u03FF])/g, '$1 $2')
+    .trim();
 }
 
 interface SourceWork {
@@ -180,9 +206,15 @@ function paginateBookEntries(entries: BookEntry[]): PageData[] {
   return pages;
 }
 
+// Null byte as sentinel — built at runtime to avoid ESLint no-control-regex on literal \x00/\u0000 in regex
+const NUL = String.fromCharCode(0);
+const REF_SPLIT_RE = new RegExp(`${NUL}REF:(.*?)${NUL}SV:(.*?)${NUL}\\n`);
+const BOOK_MATCH_RE = new RegExp(`^${NUL}BOOK:(.*?)${NUL}$`);
+const REF_MATCH_RE = new RegExp(`${NUL}REF:(.*?)${NUL}`);
+
 function renderBlock(block: string, idx: number, expandedRefs: Set<string>, toggleRef: (key: string) => void) {
-  // Split on REF marker that now includes SV text: \x00REF:ref\x00SV:text\x00\n
-  const parts = block.split(/\x00REF:(.*?)\x00SV:(.*?)\x00\n/);
+  // Split on REF marker that now includes SV text: \0REF:ref\0SV:text\0\n
+  const parts = block.split(REF_SPLIT_RE);
   const elements: React.ReactNode[] = [];
 
   for (let i = 0; i < parts.length; i++) {
@@ -222,7 +254,7 @@ function renderBlock(block: string, idx: number, expandedRefs: Set<string>, togg
       // Commentary text — always visible
       const paragraphs = part.split('\n').filter(p => p.trim());
       paragraphs.forEach((p, pi) => {
-        const cleaned = p.replace(/🔗/g, '').replace(/^Pagina \d+ van \d+\s*$/i, '').trim();
+        const cleaned = cleanParagraph(p);
         if (cleaned) {
           elements.push(
             <p key={`p-${idx}-${i}-${pi}`} className="bl-paragraph">
@@ -239,7 +271,7 @@ function renderBlock(block: string, idx: number, expandedRefs: Set<string>, togg
 
 function renderBookBlock(block: string, idx: number) {
   // Check for book header marker
-  const bookMatch = block.match(/^\x00BOOK:(.*?)\x00$/);
+  const bookMatch = block.match(BOOK_MATCH_RE);
   if (bookMatch) {
     return (
       <div key={`bh-${idx}`} className="bl-book-header">
@@ -251,7 +283,10 @@ function renderBookBlock(block: string, idx: number) {
   }
 
   // Regular paragraph — split on single newlines for sub-paragraphs
-  const lines = block.split('\n').filter(l => l.trim()).filter(l => !/^Pagina \d+ van \d+\s*$/i.test(l));
+  const lines = block
+    .split('\n')
+    .map(cleanParagraph)
+    .filter(l => l.length > 0);
   return (
     <div key={`bp-${idx}`} className="bl-entry">
       {lines.map((line, li) => (
@@ -269,6 +304,11 @@ export default function Boeklezer() {
   const deepVerseId = searchParams.get('verseId');
   const deepCommentaryId = searchParams.get('commentaryId');
   const deepPage = searchParams.get('page');
+  const fromSource = searchParams.get('from');
+  const fromQuery = searchParams.get('q') || '';
+  const backTarget = fromSource === 'pv'
+    ? `/preekvoorbereiding${fromQuery ? `?q=${encodeURIComponent(fromQuery)}` : ''}`
+    : '/oudvaders';
 
   const [author, setAuthor] = useState<AuthorInfo | null>(null);
   const [sourceWorks, setSourceWorks] = useState<SourceWork[]>([]);
@@ -357,7 +397,7 @@ export default function Boeklezer() {
       setSelectedSource(preSelected?.id || nlWork?.id || works[0]?.id || null);
       setSourcesLoaded(true);
     }).catch(() => setError('Kon gegevens niet laden.'));
-  }, [authorId]);
+  }, [authorId, searchParams]);
 
   // Load commentaries — try book-scope first, fall back to verse-scope
   useEffect(() => {
@@ -378,8 +418,9 @@ export default function Boeklezer() {
         bookCheckQuery = bookCheckQuery.eq('source_work_id', selectedSource);
       }
 
-      const { data: bookIndex } = await bookCheckQuery;
-      const hasBookEntries = (bookIndex || []).length > 0;
+      const { data: bookIndexData } = await bookCheckQuery;
+      const bookIndexRows = (bookIndexData || []) as unknown as BookIndexRow[];
+      const hasBookEntries = bookIndexRows.length > 0;
 
       // When deep-linking to a specific commentary/verse, use verse-scope for precise navigation
       const hasDeepLink = !!(deepCommentaryId || deepVerseId);
@@ -387,19 +428,19 @@ export default function Boeklezer() {
       if (hasBookEntries && !hasDeepLink) {
         // Build TOC from index
         const booksMap = new Map<string, number>();
-        for (const b of (bookIndex || [])) {
-          const bv = (b as any).bible_verses.bible_books;
+        for (const b of bookIndexRows) {
+          const bv = b.bible_verses.bible_books;
           if (!booksMap.has(bv.name)) booksMap.set(bv.name, bv.book_order);
         }
         setBookIndex([...booksMap.entries()].map(([name, order]) => ({ name, order })).sort((a, b) => a.order - b.order));
 
         // Book mode — load only the selected/first book's text (lazy)
-        const targetBook = filterBook || (bookIndex![0] as any).bible_verses.bible_books.name;
+        const targetBook = filterBook || bookIndexRows[0].bible_verses.bible_books.name;
 
         // Get the commentary IDs for the target book
-        const targetIds = (bookIndex || [])
-          .filter((b: any) => b.bible_verses.bible_books.name === targetBook)
-          .map((b: any) => b.id);
+        const targetIds = bookIndexRows
+          .filter((b) => b.bible_verses.bible_books.name === targetBook)
+          .map((b) => b.id);
 
         if (targetIds.length > 0) {
           // Now fetch full text only for this book
@@ -522,10 +563,13 @@ export default function Boeklezer() {
       .order('year_written', { ascending: true })
       .limit(30)
       .then(({ data }) => {
-        // Filter out foreword/introduction entries that slipped through scope filter
+        // Filter out foreword/introduction entries that slipped through scope filter.
+        // Run cleanPreview first so title-page cruft (legenda, publisher info) is stripped
+        // before matching — otherwise entries where the foreword sits AFTER a legenda block slip through.
+        const forewordRe = /^(HOOFDSTUK|VOORREDE|VOORWOORD|VOORAFSPRAAK|VOORAF|VOORBERICHT|INLEIDING|INHOUD|INHOUDSOPGAVE|OPDRACHT|REGISTER|TITELPAGINA|ZENDBRIEF|ZENDBRIEVEN|OPDRACHTSBRIEF|VERKLARING\s+DER|VOORWERK)/;
         const filtered = ((data || []) as unknown as SideCommentary[]).filter(sc => {
-          const t = sc.commentary_text.trim().substring(0, 120).toUpperCase();
-          return !/^(HOOFDSTUK|VOORREDE|VOORWOORD|ZENDBRIEVEN|INLEIDING|OPDRACHT|VOORAF)/.test(t);
+          const cleaned = cleanPreview(sc.commentary_text).trim().substring(0, 200).toUpperCase();
+          return cleaned.length > 0 && !forewordRe.test(cleaned);
         });
         setSideCommentaries(filtered);
         setSideLoading(false);
@@ -561,7 +605,7 @@ export default function Boeklezer() {
         chapters: Array.from(chapters).sort((a, b) => a - b),
       }))
       .sort((a, b) => a.bookOrder - b.bookOrder);
-  }, [entries, bookEntries, viewMode, bookIndex]);
+  }, [entries, viewMode, bookIndex]);
 
   // Current page label for bookmark — includes author name for clarity
   const currentPageLabel = useMemo(() => {
@@ -569,7 +613,7 @@ export default function Boeklezer() {
     const pageData = pages[currentPage];
     const prefix = author?.name ? `${author.name} · ` : '';
     if (!pageData || pageData.blocks.length === 0) return `${prefix}Pagina ${currentPage + 1}`;
-    const m = pageData.blocks[0].match(/\x00REF:(.*?)\x00/);
+    const m = pageData.blocks[0].match(REF_MATCH_RE);
     return m ? `${prefix}${m[1]}` : `${prefix}Pagina ${currentPage + 1}`;
   }, [currentPage, pages, totalPages, author]);
 
@@ -714,18 +758,18 @@ export default function Boeklezer() {
   };
 
   const removeBookmark = (page: number) => {
-    const updated = bookmarks.filter(b => b.page !== page);
+    const updated = bookmarks.filter(b => !(b.page === page && (b.authorId || null) === (authorId || null)));
     setBookmarks(updated);
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(updated));
   };
 
-  const isBookmarked = bookmarks.some(b => b.page === currentPage);
+  const isBookmarked = bookmarks.some(b => b.page === currentPage && (b.authorId || null) === (authorId || null));
 
   if (loading) {
     return (
       <div className="bl-layout">
         <div className="bl-header-bar">
-          <Link to="/oudvaders" className="bl-back">{'\u2039'} Terug</Link>
+          <Link to={backTarget} className="bl-back">{'\u2039'} Terug</Link>
           <span className="bl-header-title">Boeklezer</span>
         </div>
         <div className="bl-center"><div className="loader"><div className="spinner" /></div></div>
@@ -737,7 +781,7 @@ export default function Boeklezer() {
     return (
       <div className="bl-layout">
         <div className="bl-header-bar">
-          <Link to="/oudvaders" className="bl-back">{'\u2039'} Terug</Link>
+          <Link to={backTarget} className="bl-back">{'\u2039'} Terug</Link>
           <span className="bl-header-title">Boeklezer</span>
         </div>
         <div className="bl-center"><div className="error-box">{error}</div></div>
@@ -753,7 +797,7 @@ export default function Boeklezer() {
     <div className="bl-layout">
       {/* Compact header */}
       <div className="bl-header-bar">
-        <Link to="/oudvaders" className="bl-back">{'\u2039'}</Link>
+        <Link to={backTarget} className="bl-back">{'\u2039'}</Link>
 
         {sourceWorks.length > 1 && (
           <select
@@ -840,17 +884,19 @@ export default function Boeklezer() {
         <aside className="bl-sidebar bl-sidebar-left">
           <div className="bl-side-section">
             <div className="bl-side-title">Bladwijzers</div>
-            {bookmarks.length === 0 ? (
-              <div className="bl-side-empty">Nog geen bladwijzers</div>
-            ) : (
-              bookmarks.sort((a, b) => a.page - b.page).map(bm => (
+            {(() => {
+              const currentBookmarks = bookmarks.filter(b => (b.authorId || null) === (authorId || null));
+              if (currentBookmarks.length === 0) {
+                return <div className="bl-side-empty">Nog geen bladwijzers</div>;
+              }
+              return currentBookmarks.sort((a, b) => a.page - b.page).map(bm => (
                 <div key={bm.page} className="bl-side-item" onClick={() => goToPage(bm.page)}>
                   <span className="bl-side-item-label">{bm.label}</span>
                   <span className="bl-side-item-page">p.{bm.page + 1}</span>
                   <button className="bl-side-item-rm" onClick={e => { e.stopPropagation(); removeBookmark(bm.page); }}>{'\u2715'}</button>
                 </div>
-              ))
-            )}
+              ));
+            })()}
           </div>
           <div className="bl-side-section">
             <div className="bl-side-title">Geschiedenis</div>
@@ -898,6 +944,14 @@ export default function Boeklezer() {
                   }
                   return (
                     <Link key={i} to={`/boeklezer/${n.authorId}?page=${(n.page || 0) + 1}`} className="bl-side-note bl-side-link">
+                      {noteContent}
+                    </Link>
+                  );
+                }
+                // Fallback voor legacy notities zonder authorId/page: gebruik ref voor zoek-deeplink
+                if (n.ref) {
+                  return (
+                    <Link key={i} to={`/zoeken?q=${encodeURIComponent(n.ref)}`} className="bl-side-note bl-side-link">
                       {noteContent}
                     </Link>
                   );
@@ -960,7 +1014,9 @@ export default function Boeklezer() {
                 {currentPage > 0 && (
                   <button className="bl-foot-btn" onClick={prevPage}>{'\u2039'} Vorige</button>
                 )}
-                <span className="bl-page-num">{totalPages > 0 ? currentPage + 1 : '\u2014'}</span>
+                <span className="bl-page-num">
+                  {totalPages > 0 ? `Pagina ${currentPage + 1} van ${totalPages}` : '\u2014'}
+                </span>
                 {currentPage < totalPages - 1 && (
                   <button className="bl-foot-btn" onClick={nextPage}>Volgende {'\u203A'}</button>
                 )}

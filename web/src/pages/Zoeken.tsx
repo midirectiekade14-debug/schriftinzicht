@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { parseReference, formatRef, getSuggestions, navigateRef, displayBookName, expandInlineRefs, type BibleRef } from '../lib/parseReference';
+import { parseReference, formatRef, getSuggestions, navigateRef, displayBookName, expandInlineRefs, sanitizeContent, type BibleRef } from '../lib/parseReference';
 import type { BibleVerse, Kanttekening } from '../types/database';
 import Logo from '../components/Logo';
 import SelectionPopup from '../components/SelectionPopup';
@@ -11,16 +11,32 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
 
+/** Glue OCR word-break fragments back together.
+ *  PDF OCR sometimes splits the first letter of a word onto its own paragraph
+ *  (e.g. ["...hun werd.", "W", "at een zelfvernedering..."]). Merge orphans. */
+function glueOcrFragments(paragraphs: string[]): string[] {
+  const result: string[] = [];
+  for (const p of paragraphs) {
+    const last = result[result.length - 1];
+    if (last && /^[A-Za-z]{1,3}$/.test(last) && /^[a-z]/.test(p)) {
+      result[result.length - 1] = last + p;
+    } else {
+      result.push(p);
+    }
+  }
+  return result;
+}
+
 /** Split commentary text into readable paragraphs.
  *  Priority: double newlines > single newlines > sentence-based splitting for long blocks. */
 function splitIntoParagraphs(text: string): string[] {
   // Try double newlines first
   const doubleNl = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
-  if (doubleNl.length > 1) return doubleNl;
+  if (doubleNl.length > 1) return glueOcrFragments(doubleNl);
 
   // Try single newlines (many entries use these as paragraph breaks)
   const singleNl = text.split(/\n/).map(p => p.trim()).filter(Boolean);
-  if (singleNl.length > 1) return singleNl;
+  if (singleNl.length > 1) return glueOcrFragments(singleNl);
 
   // No newlines at all — split long text on sentence boundaries (~400 chars)
   if (text.length < 600) return [text];
@@ -45,6 +61,43 @@ function splitIntoParagraphs(text: string): string[] {
     remaining = remaining.substring(splitIdx).trim();
   }
   return result;
+}
+
+/** Render a commentary paragraph. If it starts with a verse number (or contains
+ *  embedded "N VerseText. N VerseText." patterns), wrap numbers in superscript. */
+function renderCommPara(para: string, key: number) {
+  // Embedded pattern: "1 Een psalm... 2 Hij doet..." — split on "." + space + "N Uppercase"
+  if (/^\d+\s+[A-Z\u00C0-\u024F].*\.\s+\d+\s+[A-Z\u00C0-\u024F]/.test(para)) {
+    const parts = para.split(/(?<=[.!?])\s+(?=\d+\s+[A-Z\u00C0-\u024F])/);
+    return (
+      <p key={key} className="comm-para">
+        {parts.map((part, i) => {
+          const m = part.match(/^(\d+)\s+/);
+          if (m) {
+            return (
+              <span key={i} className="comm-verse-line">
+                <sup className="comm-verse-num">{m[1]}</sup>
+                {expandInlineRefs(part.slice(m[0].length))}
+                {i < parts.length - 1 ? ' ' : ''}
+              </span>
+            );
+          }
+          return <span key={i}>{expandInlineRefs(part)}</span>;
+        })}
+      </p>
+    );
+  }
+  // Single-verse pattern: "1 Een psalm..."
+  const m = para.match(/^(\d+)\s+(?=[A-Z\u00C0-\u024F])/);
+  if (m) {
+    return (
+      <p key={key} className="comm-para">
+        <sup className="comm-verse-num">{m[1]}</sup>
+        {expandInlineRefs(para.slice(m[0].length))}
+      </p>
+    );
+  }
+  return <p key={key} className="comm-para">{expandInlineRefs(para)}</p>;
 }
 
 interface CrossRefRow {
@@ -102,16 +155,18 @@ function useDailyVerse() {
         comms = fallback.data;
       }
       if (!comms?.length) return;
-      const validComms = comms.filter((c: any) => c.commentary_text?.trim().length > 10);
+      type DailyCommRow = { verse_id: string; commentary_text: string | null; authors: { name: string } | null };
+      const validComms = (comms as unknown as DailyCommRow[]).filter((c) => (c.commentary_text?.trim().length ?? 0) > 10);
       if (!validComms.length) return;
-      const pick = validComms[dayOfYear % validComms.length] as any;
+      const pick = validComms[dayOfYear % validComms.length];
       const { data: mainVerse } = await supabase
         .from('bible_verses')
         .select('text_sv, chapter, verse, book_id, bible_books(name, abbreviation)')
         .eq('id', pick.verse_id)
         .limit(1);
       if (!mainVerse?.length) return;
-      const v = mainVerse[0] as any;
+      type MainVerseRow = { text_sv: string; chapter: number; verse: number; book_id: string; bible_books: { name: string; abbreviation: string } | null };
+      const v = mainVerse[0] as unknown as MainVerseRow;
       // Haal 2 extra verzen op voor context (vers-1 t/m vers+1)
       const { data: contextVerses } = await supabase
         .from('bible_verses')
@@ -121,8 +176,9 @@ function useDailyVerse() {
         .gte('verse', Math.max(1, v.verse - 1))
         .lte('verse', v.verse + 1)
         .order('verse', { ascending: true });
-      const combinedText = (contextVerses || [mainVerse[0]])
-        .map((cv: any) => cv.text_sv).join(' ');
+      type ContextVerseRow = { verse: number; text_sv: string };
+      const combinedText = ((contextVerses as ContextVerseRow[] | null) || [{ verse: v.verse, text_sv: v.text_sv }])
+        .map((cv) => cv.text_sv).join(' ');
       const bookName = displayBookName(v.bible_books?.name || v.bible_books?.abbreviation || '');
       const startV = contextVerses?.length ? contextVerses[0].verse : v.verse;
       const endV = contextVerses?.length ? contextVerses[contextVerses.length - 1].verse : v.verse;
@@ -190,22 +246,40 @@ const bookIdCache = new Map<string, string>();
 
 // In-memory search result cache (TTL 5 min)
 const CACHE_TTL = 5 * 60 * 1000;
-const searchCache = new Map<string, { data: any; ts: number }>();
+interface SearchCachePayload {
+  textTotal: number;
+  textResults: BibleVerse[];
+  textCommTotal: number;
+  textCommentaries: CommentaryWithAuthor[];
+  textSermonTotal: number;
+  textSermons: SermonSearchRow[];
+  textTab: 'bijbel' | 'verklaringen' | 'preken';
+}
+const searchCache = new Map<string, { data: SearchCachePayload; ts: number }>();
 
-function getCached(key: string) {
+function getCached(key: string): SearchCachePayload | null {
   const entry = searchCache.get(key);
   if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
   searchCache.delete(key);
   return null;
 }
 
-function setCache(key: string, data: any) {
+function setCache(key: string, data: SearchCachePayload) {
   searchCache.set(key, { data, ts: Date.now() });
   // Limit cache size
   if (searchCache.size > 50) {
     const oldest = searchCache.keys().next().value;
     if (oldest) searchCache.delete(oldest);
   }
+}
+
+interface SermonSearchRow {
+  id: string;
+  title: string;
+  year_preached: number | null;
+  source_collection: string | null;
+  sermon_text: string;
+  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
 }
 
 interface DetailBookmark {
@@ -235,7 +309,7 @@ export default function Zoeken() {
   const [textCollapsed, setTextCollapsed] = useState<Record<string, boolean>>({});
   const [textCommentaries, setTextCommentaries] = useState<CommentaryWithAuthor[]>([]);
   const [textCommTotal, setTextCommTotal] = useState(0);
-  const [textSermons, setTextSermons] = useState<any[]>([]);
+  const [textSermons, setTextSermons] = useState<SermonSearchRow[]>([]);
   const [textSermonTotal, setTextSermonTotal] = useState(0);
   const [textTab, setTextTab] = useState<'bijbel' | 'verklaringen' | 'preken'>('bijbel');
   const [commentaries, setCommentaries] = useState<CommentaryWithAuthor[]>([]);
@@ -414,7 +488,7 @@ export default function Zoeken() {
         const textCommTotal = commCount.count || 0;
         const textCommentaries = (commRes.data || []) as CommentaryWithAuthor[];
         const textSermonTotal = sermonCount.count || 0;
-        const textSermons = sermonRes.data || [];
+        const textSermons = (sermonRes.data || []) as unknown as SermonSearchRow[];
 
         setTextTotal(textTotal);
         setTextResults(textResults);
@@ -465,7 +539,7 @@ export default function Zoeken() {
       }
 
       // Fetch verse range
-      const { data: vData } = await supabase.from('bible_verses')
+      let { data: vData } = await supabase.from('bible_verses')
         .select('*, bible_books(name, abbreviation)')
         .eq('book_id', bookId)
         .eq('chapter', ref.chapter)
@@ -473,13 +547,22 @@ export default function Zoeken() {
         .lte('verse', ref.verseEnd)
         .order('verse', { ascending: true });
 
-      if (!vData?.length) {
-        // If verseStart > max verse, try last verse of chapter (for prev/next overflow)
-        if (ref.verseStart > 1) {
-          setError(`${formatRef(ref)} niet gevonden.`);
-        } else {
-          setError(`${ref.book} ${ref.chapter} niet gevonden.`);
+      // Fallback: if verseStart exceeds the chapter's last verse (e.g. navigating back from
+      // 19:1 → "18:999" sentinel, or user enters Lev 18:999), clamp to the actual last verse.
+      if (!vData?.length && ref.verseStart > 1) {
+        const { data: lastVerse } = await supabase.from('bible_verses')
+          .select('*, bible_books(name, abbreviation)')
+          .eq('book_id', bookId)
+          .eq('chapter', ref.chapter)
+          .order('verse', { ascending: false })
+          .limit(1);
+        if (lastVerse?.length) {
+          vData = lastVerse;
         }
+      }
+
+      if (!vData?.length) {
+        setError(`${ref.book} ${ref.chapter} niet gevonden.`);
         setVerses([]); setCommentaries([]); setKanttekeningen([]); setCrossRefs([]);
         setLoading(false); return;
       }
@@ -492,7 +575,7 @@ export default function Zoeken() {
       setRefLabel(formatRef(actualRef));
 
       setVerses(vData as BibleVerse[]);
-      const verseIds = vData.map((v: any) => v.id);
+      const verseIds = (vData as BibleVerse[]).map((v) => v.id);
 
       // Parallel fetch all supplementary data
       const [commRes, kantRes, crossRes] = await Promise.all([
@@ -524,7 +607,7 @@ export default function Zoeken() {
       setCommentaries(deduped);
       // Sort kanttekeningen by verse number, then note_order
       const kantData = (kantRes.data || []) as Kanttekening[];
-      const verseNumMap = new Map(vData.map((v: any) => [v.id, v.verse]));
+      const verseNumMap = new Map((vData as BibleVerse[]).map((v) => [v.id, v.verse]));
       kantData.sort((a, b) => {
         const va = verseNumMap.get(a.verse_id) || 0;
         const vb = verseNumMap.get(b.verse_id) || 0;
@@ -831,7 +914,7 @@ export default function Zoeken() {
                         {kants.map((k) => (
                           <div key={k.id} className="kanttekening-item">
                             {k.marker && <span className="kant-marker">{k.marker}</span>}
-                            <span className="kant-text" data-edit-table="kanttekeningen" data-edit-id={k.id} data-edit-col="note_text" data-edit-label={`Kanttekening ${k.marker || ''}`}>{expandInlineRefs(k.note_text)}</span>
+                            <span className="kant-text" data-edit-table="kanttekeningen" data-edit-id={k.id} data-edit-col="note_text" data-edit-label={`Kanttekening ${k.marker || ''}`}>{expandInlineRefs(sanitizeContent(k.note_text))}</span>
                             <button
                               className={`detail-bm-btn ${isDetailBookmarked(k.id) ? 'active' : ''}`}
                               onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('kanttekening', k.id, k.note_text || '', 'Kanttekening'); }}
@@ -866,7 +949,7 @@ export default function Zoeken() {
               ) : compareMode && !isRange ? (
                 <div className="compare-grid">
                   {commentaries.map((item) => {
-                    const text = item.commentary_text || '';
+                    const text = sanitizeContent(item.commentary_text || '');
                     const authorName = item.authors?.name || 'Onbekend';
                     const years = item.authors?.born_year
                       ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
@@ -887,9 +970,7 @@ export default function Zoeken() {
                           </button>
                         </div>
                         <div className="commentary-text" data-edit-table="commentaries" data-edit-id={item.id} data-edit-col="commentary_text" data-edit-label={`${authorName} — verklaring`}>
-                          {splitIntoParagraphs(text).map((para, pi) => (
-                            <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
-                          ))}
+                          {splitIntoParagraphs(text).map((para, pi) => renderCommPara(para, pi))}
                         </div>
                       </div>
                     );
@@ -920,7 +1001,7 @@ export default function Zoeken() {
                         )}
                         {comms.map((item) => {
                           const isExpanded = expanded[item.id];
-                          const text = item.commentary_text || '';
+                          const text = sanitizeContent(item.commentary_text || '');
                           const preview = truncate(text, 200);
                           const authorName = item.authors?.name || 'Onbekend';
                           const years = item.authors?.born_year
@@ -943,9 +1024,7 @@ export default function Zoeken() {
                               </div>
                               <div className="commentary-text" data-edit-table="commentaries" data-edit-id={item.id} data-edit-col="commentary_text" data-edit-label={`${authorName} — verklaring`}>
                                 {isExpanded
-                                  ? splitIntoParagraphs(text).map((para, pi) => (
-                                      <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
-                                    ))
+                                  ? splitIntoParagraphs(text).map((para, pi) => renderCommPara(para, pi))
                                   : expandInlineRefs(preview)
                                 }
                               </div>
@@ -1010,8 +1089,9 @@ export default function Zoeken() {
 
             {/* ── Tab: Bijbel ── */}
             {textTab === 'bijbel' && (() => {
-              const byBook = new Map<string, { book: any; verses: any[] }>();
-              for (const v of textResults as any[]) {
+              type BookGroup = { book: BibleVerse['bible_books']; verses: BibleVerse[] };
+              const byBook = new Map<string, BookGroup>();
+              for (const v of textResults) {
                 const bookName = v.bible_books?.name || 'Onbekend';
                 if (!byBook.has(bookName)) byBook.set(bookName, { book: v.bible_books, verses: [] });
                 byBook.get(bookName)!.verses.push(v);
@@ -1019,12 +1099,12 @@ export default function Zoeken() {
               const entries = Array.from(byBook.entries());
               const otEntries = entries.filter(([, g]) => g.book?.testament === 'OT');
               const ntEntries = entries.filter(([, g]) => g.book?.testament === 'NT');
-              const sortByOrder = (a: [string, any], b: [string, any]) =>
+              const sortByOrder = (a: [string, BookGroup], b: [string, BookGroup]) =>
                 (a[1].book?.book_order || 0) - (b[1].book?.book_order || 0);
               otEntries.sort(sortByOrder);
               ntEntries.sort(sortByOrder);
 
-              const renderGroup = (bookName: string, group: { book: any; verses: any[] }) => {
+              const renderGroup = (bookName: string, group: BookGroup) => {
                 const isCollapsed = textCollapsed[bookName] !== false && group.verses.length > 3;
                 const shown = isCollapsed ? group.verses.slice(0, 3) : group.verses;
                 return (
@@ -1033,7 +1113,7 @@ export default function Zoeken() {
                       <span className="tr-book-name">{displayBookName(bookName)}</span>
                       <span className="tr-book-count">{group.verses.length}×</span>
                     </div>
-                    {shown.map((v: any) => (
+                    {shown.map((v) => (
                       <Link key={v.id} to={`/zoeken?q=${encodeURIComponent(`${v.bible_books?.name || ''} ${v.chapter}:${v.verse}`)}`} className="text-result-item">
                         <span className="text-result-ref">{v.chapter}:{v.verse}</span>
                         <span className="text-result-text">{v.text_sv}</span>
@@ -1126,7 +1206,7 @@ export default function Zoeken() {
                     {textSermonTotal} preken met "{query.trim()}"
                     {textSermons.length < textSermonTotal && <span className="tr-shown"> (eerste {textSermons.length} getoond)</span>}
                   </div>
-                  {textSermons.map((s: any) => {
+                  {textSermons.map((s) => {
                     const isExp = expanded[s.id];
                     const text = s.sermon_text || '';
                     const preview = truncate(text, 250);

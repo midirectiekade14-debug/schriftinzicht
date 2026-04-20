@@ -23,7 +23,7 @@ interface SermonPreview {
 /** Normalize title: strip leading numbering, fix casing, detect reference-style titles */
 function cleanTitle(t: string): string {
   // Remove leading "1. ", "2) " etc.
-  let s = t.replace(/^\d+[\.\)]\s*/, '');
+  let s = t.replace(/^\d+[.)]\s*/, '');
   // If entire string is UPPER CASE, convert to Title Case
   if (s.length > 5 && s === s.toUpperCase()) {
     s = s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());

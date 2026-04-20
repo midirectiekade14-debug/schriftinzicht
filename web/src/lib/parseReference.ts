@@ -250,12 +250,18 @@ export function displayBookName(dbName: string): string {
  */
 const INLINE_ABBREVS: [RegExp, string][] = [
   [/\bGenes?\.\s*/gi, 'Genesis '],
+  [/\bGen\.\s*/gi, 'Genesis '],
   [/\bExod?\.\s*/gi, 'Exodus '],
+  [/\bEx\.\s*/gi, 'Exodus '],
   [/\bLevit(?:icus)?\.?\s*/gi, 'Leviticus '],
+  [/\bLev\.\s*/gi, 'Leviticus '],
   [/\bNum\.\s*/gi, 'Numeri '],
+  [/\bNu\.\s*/gi, 'Numeri '],
   [/\bDeut(?:er)?\.\s*/gi, 'Deuteronomium '],
+  [/\bDt\.\s*/gi, 'Deuteronomium '],
   [/\bJoz\.\s*/gi, 'Jozua '],
   [/\bRicht?\.\s*/gi, 'Richteren '],
+  [/\bRi\.\s*/gi, 'Richteren '],
   [/\b1\s*Sam\.\s*/gi, '1 Samuël '],
   [/\b2\s*Sam\.\s*/gi, '2 Samuël '],
   [/\b1\s*Kon\.\s*/gi, '1 Koningen '],
@@ -327,6 +333,26 @@ export function expandInlineRefs(text: string): string {
     result = result.replace(pattern, replacement);
   }
   return result;
+}
+
+/**
+ * Strip navigational/import residue that leaked in from source HTML (scraped OCR PDFs, Calvijn
+ * site-map fragments, etc.): "Return to top of page", link emoji, stray "Pagina X van Y" markers.
+ */
+export function sanitizeContent(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\uD83D\uDD17\uFE0F?/g, '')
+    .replace(/Return\s+to\s+top\s+of\s+page\s*/gi, '')
+    .replace(/Back\s+to\s+top\s*/gi, '')
+    .replace(/Top\s+of\s+page\s*/gi, '')
+    .replace(/(^|\s)Pagina\s+\d+\s+van\s+\d+\s*/gmi, '$1')
+    .replace(/\(\s*\n\s*([^()\n]{1,60}?)\s*\n/g, '($1)\n')
+    .replace(/([\u0590-\u05FF\u0370-\u03FF])([A-Za-z])/g, '$1 $2')
+    .replace(/([A-Za-z])([\u0590-\u05FF\u0370-\u03FF])/g, '$1 $2')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 /**

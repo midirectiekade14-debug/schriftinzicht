@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import StyleBar from '../../components/admin/StyleBar';
 
@@ -7,6 +7,19 @@ interface EditTarget {
   id: string;
   col: string;
   label: string;
+}
+
+const EDITABLE_FIELDS: Record<string, readonly string[]> = {
+  bible_verses: ['text_sv'],
+  kanttekeningen: ['note_text'],
+  commentaries: ['commentary_text'],
+  catechism_questions: ['question_text', 'answer_text'],
+  confession_articles: ['article_text'],
+};
+
+function isAllowed(table: unknown, col: unknown): table is string {
+  if (typeof table !== 'string' || typeof col !== 'string') return false;
+  return EDITABLE_FIELDS[table]?.includes(col) ?? false;
 }
 
 export default function LiveEditor() {
@@ -22,18 +35,11 @@ export default function LiveEditor() {
   const [fontSize, setFontSize] = useState('15px');
   const [fontColor, setFontColor] = useState('var(--text, #e7e1d8)');
 
-  // Listen for edit messages from iframe
-  useEffect(() => {
-    function handleMessage(e: MessageEvent) {
-      if (e.data?.type !== 'si-edit') return;
-      const { table, id, col, label } = e.data;
-      loadRecord(table, id, col, label);
+  const loadRecord = useCallback(async (table: string, id: string, col: string, label: string) => {
+    if (!isAllowed(table, col)) {
+      setMsg('Fout: veld niet bewerkbaar');
+      return;
     }
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  async function loadRecord(table: string, id: string, col: string, label: string) {
     setLoading(true);
     setMsg('');
     const { data, error } = await supabase.from(table).select(col).eq('id', id).single();
@@ -47,10 +53,28 @@ export default function LiveEditor() {
     setEditText(text);
     setOriginalText(text);
     setLoading(false);
-  }
+  }, []);
+
+  // Listen for edit messages from iframe (same-origin only)
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.source !== iframeRef.current?.contentWindow) return;
+      if (e.data?.type !== 'si-edit') return;
+      const { table, id, col, label } = e.data;
+      if (!isAllowed(table, col) || typeof id !== 'string') return;
+      loadRecord(table, id, col, typeof label === 'string' ? label : '');
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [loadRecord]);
 
   async function save() {
     if (!target) return;
+    if (!isAllowed(target.table, target.col)) {
+      setMsg('Fout: veld niet bewerkbaar');
+      return;
+    }
     setSaving(true);
     setMsg('');
     const { error } = await supabase.from(target.table).update({ [target.col]: editText }).eq('id', target.id);
@@ -59,8 +83,7 @@ export default function LiveEditor() {
     } else {
       setMsg('Opgeslagen!');
       setOriginalText(editText);
-      // Refresh iframe to show changes
-      iframeRef.current?.contentWindow?.postMessage({ type: 'si-refresh' }, '*');
+      iframeRef.current?.contentWindow?.postMessage({ type: 'si-refresh' }, window.location.origin);
     }
     setSaving(false);
   }

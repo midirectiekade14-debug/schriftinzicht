@@ -38,7 +38,7 @@ export function useAuth(): AuthState {
 
   const refreshProfile = useCallback(async () => {
     if (user?.id) await fetchProfile(user.id);
-  }, [user?.id, fetchProfile]);
+  }, [user, fetchProfile]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

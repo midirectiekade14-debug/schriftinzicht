@@ -44,9 +44,8 @@ export default function Authors() {
   const [portraitZoom, setPortraitZoom] = useState(false);
   const [imgScale, setImgScale] = useState(1);
   const [imgPos, setImgPos] = useState({ x: 0, y: 0 });
+  const [imgDragging, setImgDragging] = useState(false);
   const imgDrag = useRef<{ dragging: boolean; startX: number; startY: number; origX: number; origY: number }>({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0 });
-
-  useEffect(() => { loadAuthors(); }, []);
 
   async function loadAuthors() {
     setLoading(true);
@@ -54,6 +53,8 @@ export default function Authors() {
     setAuthors(data || []);
     setLoading(false);
   }
+
+  useEffect(() => { Promise.resolve().then(loadAuthors); }, []);
 
   async function loadAuthorWorks(authorId: string) {
     setWorksLoading(true);
@@ -64,7 +65,7 @@ export default function Authors() {
     const worksData = worksRes.data || [];
     // Get commentary counts per work
     const withCounts = await Promise.all(
-      worksData.map(async (w: any) => {
+      worksData.map(async (w: SourceWork) => {
         const { count } = await supabase.from('commentaries').select('*', { count: 'exact', head: true }).eq('source_work_id', w.id);
         return { ...w, commentary_count: count || 0 };
       })
@@ -196,15 +197,15 @@ export default function Authors() {
                 <div
                   className="adm-portrait-zoom-area"
                   onWheel={e => { e.preventDefault(); setImgScale(s => Math.max(0.5, Math.min(5, s + (e.deltaY > 0 ? -0.2 : 0.2)))); }}
-                  onMouseDown={e => { imgDrag.current = { dragging: true, startX: e.clientX, startY: e.clientY, origX: imgPos.x, origY: imgPos.y }; }}
+                  onMouseDown={e => { imgDrag.current = { dragging: true, startX: e.clientX, startY: e.clientY, origX: imgPos.x, origY: imgPos.y }; setImgDragging(true); }}
                   onMouseMove={e => { if (!imgDrag.current.dragging) return; setImgPos({ x: imgDrag.current.origX + e.clientX - imgDrag.current.startX, y: imgDrag.current.origY + e.clientY - imgDrag.current.startY }); }}
-                  onMouseUp={() => { imgDrag.current.dragging = false; }}
-                  onMouseLeave={() => { imgDrag.current.dragging = false; }}
+                  onMouseUp={() => { imgDrag.current.dragging = false; setImgDragging(false); }}
+                  onMouseLeave={() => { imgDrag.current.dragging = false; setImgDragging(false); }}
                 >
                   <img
                     src={form.portrait_url}
                     alt="Portret"
-                    style={{ transform: `translate(${imgPos.x}px, ${imgPos.y}px) scale(${imgScale})`, cursor: imgDrag.current.dragging ? 'grabbing' : 'grab' }}
+                    style={{ transform: `translate(${imgPos.x}px, ${imgPos.y}px) scale(${imgScale})`, cursor: imgDragging ? 'grabbing' : 'grab' }}
                     draggable={false}
                   />
                 </div>

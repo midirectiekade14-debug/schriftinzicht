@@ -28,14 +28,10 @@ export default function Dashboard() {
   const [topAuthors, setTopAuthors] = useState<{ name: string; commentaries: number; sermons: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
   async function loadStats() {
     setLoading(true);
     const tables = ['bible_verses', 'commentaries', 'kanttekeningen', 'sermons', 'authors', 'confession_articles', 'catechism_questions', 'cross_references'] as const;
-    const counts: any = {};
+    const counts: Partial<Record<keyof Stats, number>> = {};
     await Promise.all(
       tables.map(async (t) => {
         const { count } = await supabase.from(t).select('*', { count: 'exact', head: true });
@@ -44,22 +40,35 @@ export default function Dashboard() {
     );
     setStats(counts as Stats);
 
-    // Top auteurs met meeste content
-    const { data: authors } = await supabase.from('authors').select('id, name');
+    // Top auteurs: 3 queries ipv N+1 per auteur
+    const [{ data: authors }, { data: commRows }, { data: sermonRows }] = await Promise.all([
+      supabase.from('authors').select('id, name'),
+      supabase.from('commentaries').select('author_id'),
+      supabase.from('sermons').select('author_id'),
+    ]);
+
     if (authors && authors.length > 0) {
-      const authorStats = await Promise.all(
-        authors.map(async (a) => {
-          const [{ count: cc }, { count: sc }] = await Promise.all([
-            supabase.from('commentaries').select('*', { count: 'exact', head: true }).eq('author_id', a.id),
-            supabase.from('sermons').select('*', { count: 'exact', head: true }).eq('author_id', a.id),
-          ]);
-          return { name: a.name, commentaries: cc || 0, sermons: sc || 0 };
-        })
-      );
+      const commMap = new Map<string, number>();
+      for (const r of commRows || []) {
+        commMap.set(r.author_id, (commMap.get(r.author_id) || 0) + 1);
+      }
+      const sermonMap = new Map<string, number>();
+      for (const r of sermonRows || []) {
+        sermonMap.set(r.author_id, (sermonMap.get(r.author_id) || 0) + 1);
+      }
+      const authorStats = authors.map((a) => ({
+        name: a.name,
+        commentaries: commMap.get(a.id) || 0,
+        sermons: sermonMap.get(a.id) || 0,
+      }));
       setTopAuthors(authorStats.sort((a, b) => (b.commentaries + b.sermons) - (a.commentaries + a.sermons)).slice(0, 10));
     }
     setLoading(false);
   }
+
+  useEffect(() => {
+    Promise.resolve().then(loadStats);
+  }, []);
 
   if (loading) return <div className="adm-section-loading"><div className="spinner" /></div>;
 

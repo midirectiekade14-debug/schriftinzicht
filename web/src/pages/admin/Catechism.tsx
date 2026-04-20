@@ -23,14 +23,14 @@ export default function Catechism() {
   const [fontSize, setFontSize] = useState('15px');
   const [fontColor, setFontColor] = useState('var(--text, #e7e1d8)');
 
-  useEffect(() => { loadQuestions(); }, []);
-
   async function loadQuestions() {
     setLoading(true);
     const { data } = await supabase.from('catechism_questions').select('*').order('question_number');
     setQuestions(data || []);
     setLoading(false);
   }
+
+  useEffect(() => { Promise.resolve().then(loadQuestions); }, []);
 
   function startEdit(q: CatechismQuestion) {
     setEditing(q);

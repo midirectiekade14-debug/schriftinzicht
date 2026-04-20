@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import PremiumGate from '../components/PremiumGate';
@@ -90,15 +90,6 @@ export default function Bladwijzers() {
   const [blBookmarks, setBlBookmarks] = useState<BlBookmark[]>(loadBl);
   const [bbBookmarks, setBbBookmarks] = useState<BijbelBookmark[]>(loadBb);
   const [detailBookmarks, setDetailBookmarks] = useState<DetailBookmark[]>(loadDetail);
-
-  useEffect(() => {
-    setPvBookmarks(loadPv());
-    setBelBookmarks(loadBel());
-    setCatBookmarks(loadCat());
-    setBlBookmarks(loadBl());
-    setBbBookmarks(loadBb());
-    setDetailBookmarks(loadDetail());
-  }, []);
 
   const removePv = (ref: string) => {
     const updated = pvBookmarks.filter(b => b.ref !== ref);

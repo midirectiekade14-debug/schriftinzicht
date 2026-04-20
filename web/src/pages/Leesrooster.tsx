@@ -91,7 +91,7 @@ export default function Leesrooster() {
     }
 
     fetchSnippets();
-  }, [weekNum, bookIdMap]);
+  }, [weekNum, bookIdMap, week.readings]);
 
   const toggleProgress = (dayIdx: number) => {
     const key = `${weekNum}-${dayIdx}`;

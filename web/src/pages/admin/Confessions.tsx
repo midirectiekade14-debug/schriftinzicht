@@ -26,14 +26,14 @@ export default function Confessions() {
   const [fontSize, setFontSize] = useState('15px');
   const [fontColor, setFontColor] = useState('var(--text, #e7e1d8)');
 
-  useEffect(() => { loadArticles(); }, []);
-
   async function loadArticles() {
     setLoading(true);
     const { data } = await supabase.from('confession_articles').select('*').order('confession').order('section_number').order('article_number');
     setArticles(data || []);
     setLoading(false);
   }
+
+  useEffect(() => { Promise.resolve().then(loadArticles); }, []);
 
   function startEdit(article: ConfessionArticle) {
     setEditing(article);

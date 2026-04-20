@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase';
 import type { BibleVerse, Kanttekening } from '../types/database';
 import { truncate } from '../lib/truncate';
-import { displayBookName, expandInlineRefs } from '../lib/parseReference';
+import { displayBookName, expandInlineRefs, sanitizeContent } from '../lib/parseReference';
 import SelectionPopup from '../components/SelectionPopup';
 import { type CommentaryWithAuthor } from '../lib/constants';
 
@@ -325,7 +325,7 @@ export default function Verzen() {
                               {kanttekeningen.map((k) => (
                                 <div key={k.id} className="kanttekening-item">
                                   {k.marker && <span className="kant-marker">{k.marker}</span>}
-                                  <span className="kant-text" data-edit-table="kanttekeningen" data-edit-id={k.id} data-edit-col="note_text" data-edit-label={`Kanttekening ${k.marker || ''}`}>{expandInlineRefs(k.note_text)}</span>
+                                  <span className="kant-text" data-edit-table="kanttekeningen" data-edit-id={k.id} data-edit-col="note_text" data-edit-label={`Kanttekening ${k.marker || ''}`}>{expandInlineRefs(sanitizeContent(k.note_text))}</span>
                                   <button
                                     className={`detail-bm-btn ${isDetailBookmarked(k.id) ? 'active' : ''}`}
                                     onClick={(e) => { e.stopPropagation(); toggleDetailBookmark('kanttekening', k.id, k.note_text || '', 'Kanttekening'); }}
@@ -347,7 +347,7 @@ export default function Verzen() {
                               </div>
                               {commentaries.map((c) => {
                                 const isOpen = expandedCommentary[c.id];
-                                const text = c.commentary_text || '';
+                                const text = sanitizeContent(c.commentary_text || '');
                                 const preview = truncate(text, 200);
                                 const authorName = c.authors?.name || 'Onbekend';
                                 const years = c.authors?.born_year
