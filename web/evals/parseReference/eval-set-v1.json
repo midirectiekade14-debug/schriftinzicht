@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "target": "web/src/lib/parseReference.ts → parseReference()",
+  "contract": {
+    "input": "string",
+    "output": "BibleRef | null where BibleRef = { book: string, chapter: number, verseStart: number, verseEnd: number }",
+    "wholeChapterSentinel": "verseEnd === 999"
+  },
+  "items": [
+    {
+      "id": "F01",
+      "category": "formal",
+      "input": "Joh 3:16",
+      "expected": { "book": "Johannes", "chapter": 3, "verseStart": 16, "verseEnd": 16 }
+    },
+    {
+      "id": "F02",
+      "category": "formal",
+      "input": "Rom 8:28-30",
+      "expected": { "book": "Romeinen", "chapter": 8, "verseStart": 28, "verseEnd": 30 }
+    },
+    {
+      "id": "F03",
+      "category": "formal",
+      "input": "1 Kor 13:4-7",
+      "expected": { "book": "1 Korinthiërs", "chapter": 13, "verseStart": 4, "verseEnd": 7 }
+    },
+    {
+      "id": "F04",
+      "category": "formal",
+      "input": "Psalm 23:1",
+      "expected": { "book": "Psalmen", "chapter": 23, "verseStart": 1, "verseEnd": 1 }
+    },
+    {
+      "id": "F05",
+      "category": "formal",
+      "input": "Hebreeën 11:1",
+      "expected": { "book": "Hebreeën", "chapter": 11, "verseStart": 1, "verseEnd": 1 }
+    },
+    {
+      "id": "F06",
+      "category": "formal",
+      "input": "Openbaring 21:1-4",
+      "expected": { "book": "Openbaring van Johannes", "chapter": 21, "verseStart": 1, "verseEnd": 4 }
+    },
+    {
+      "id": "F07",
+      "category": "formal",
+      "input": "Genesis 1:1",
+      "expected": { "book": "Genesis", "chapter": 1, "verseStart": 1, "verseEnd": 1 }
+    },
+    {
+      "id": "F08",
+      "category": "formal",
+      "input": "Matt 5:3-12",
+      "expected": { "book": "Mattheüs", "chapter": 5, "verseStart": 3, "verseEnd": 12 }
+    },
+    {
+      "id": "N01",
+      "category": "natural",
+      "input": "romeinen 8 vers 10 tot 15",
+      "expected": { "book": "Romeinen", "chapter": 8, "verseStart": 10, "verseEnd": 15 }
+    },
+    {
+      "id": "N02",
+      "category": "natural",
+      "input": "genesis 1 vers 1",
+      "expected": { "book": "Genesis", "chapter": 1, "verseStart": 1, "verseEnd": 1 }
+    },
+    {
+      "id": "N03",
+      "category": "natural",
+      "input": "psalm 23 vers 1 tot en met 6",
+      "expected": { "book": "Psalmen", "chapter": 23, "verseStart": 1, "verseEnd": 6 }
+    },
+    {
+      "id": "N04",
+      "category": "natural",
+      "input": "johannes 3 vers 16",
+      "expected": { "book": "Johannes", "chapter": 3, "verseStart": 16, "verseEnd": 16 }
+    },
+    {
+      "id": "N05",
+      "category": "natural",
+      "input": "1 korinthe 13 vers 4 tot 7",
+      "expected": { "book": "1 Korinthiërs", "chapter": 13, "verseStart": 4, "verseEnd": 7 }
+    },
+    {
+      "id": "N06",
+      "category": "natural",
+      "input": "hebreeën 11 vers 1",
+      "expected": { "book": "Hebreeën", "chapter": 11, "verseStart": 1, "verseEnd": 1 }
+    },
+    {
+      "id": "N07",
+      "category": "natural",
+      "input": "psalmen 119 vers 105",
+      "expected": { "book": "Psalmen", "chapter": 119, "verseStart": 105, "verseEnd": 105 }
+    },
+    {
+      "id": "N08",
+      "category": "natural",
+      "input": "openbaring 21 vers 1-4",
+      "expected": { "book": "Openbaring van Johannes", "chapter": 21, "verseStart": 1, "verseEnd": 4 }
+    },
+    {
+      "id": "E01",
+      "category": "edge",
+      "input": "Psalm 23",
+      "expected": { "book": "Psalmen", "chapter": 23, "verseStart": 1, "verseEnd": 999 },
+      "note": "whole-chapter sentinel"
+    },
+    {
+      "id": "E02",
+      "category": "edge",
+      "input": "joh 3 16",
+      "expected": { "book": "Johannes", "chapter": 3, "verseStart": 16, "verseEnd": 16 },
+      "note": "Pattern 4: three bare numbers"
+    },
+    {
+      "id": "E03",
+      "category": "edge",
+      "input": "Rom 8,28",
+      "expected": { "book": "Romeinen", "chapter": 8, "verseStart": 28, "verseEnd": 28 },
+      "note": "comma as separator"
+    },
+    {
+      "id": "E04",
+      "category": "edge",
+      "input": "1Kor 13:4",
+      "expected": { "book": "1 Korinthiërs", "chapter": 13, "verseStart": 4, "verseEnd": 4 },
+      "note": "no space between digit and book"
+    },
+    {
+      "id": "E05",
+      "category": "edge",
+      "input": "Hand 2:1-13",
+      "expected": { "book": "Handelingen der apostelen", "chapter": 2, "verseStart": 1, "verseEnd": 13 }
+    },
+    {
+      "id": "E06",
+      "category": "edge",
+      "input": "Romeinen 8 v 28",
+      "expected": { "book": "Romeinen", "chapter": 8, "verseStart": 28, "verseEnd": 28 },
+      "note": "abbreviated 'v' for vers"
+    },
+    {
+      "id": "M01",
+      "category": "misspell",
+      "input": "Mattheus 5:3",
+      "expected": { "book": "Mattheüs", "chapter": 5, "verseStart": 3, "verseEnd": 3 },
+      "note": "no umlaut"
+    },
+    {
+      "id": "M02",
+      "category": "misspell",
+      "input": "Hebreeen 11:1",
+      "expected": { "book": "Hebreeën", "chapter": 11, "verseStart": 1, "verseEnd": 1 },
+      "note": "no umlaut"
+    },
+    {
+      "id": "M03",
+      "category": "misspell",
+      "input": "Ezechiel 1:1",
+      "expected": { "book": "Ezechiël", "chapter": 1, "verseStart": 1, "verseEnd": 1 },
+      "note": "no umlaut"
+    },
+    {
+      "id": "M04",
+      "category": "misspell",
+      "input": "rom. 8:28",
+      "expected": { "book": "Romeinen", "chapter": 8, "verseStart": 28, "verseEnd": 28 },
+      "note": "trailing period after abbreviated book — known weak spot"
+    },
+    {
+      "id": "X01",
+      "category": "negative",
+      "input": "",
+      "expected": null
+    },
+    {
+      "id": "X02",
+      "category": "negative",
+      "input": "hello world",
+      "expected": null
+    },
+    {
+      "id": "X03",
+      "category": "negative",
+      "input": "Genesis",
+      "expected": null,
+      "note": "no chapter — should not match"
+    },
+    {
+      "id": "X04",
+      "category": "negative",
+      "input": "Romeinen",
+      "expected": null,
+      "note": "no chapter — should not match"
+    }
+  ]
+}
