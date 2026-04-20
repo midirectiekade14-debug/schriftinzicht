@@ -275,7 +275,7 @@ const INLINE_ABBREVS: [RegExp, string][] = [
   [/\bSpr\.\s*(?=\d)/gi, 'Spreuken '],
   [/\bPred\.\s*(?=\d)/gi, 'Prediker '],
   [/\bHoogl\.\s*(?=\d)/gi, 'Hooglied '],
-  [/\bJesaj?\.\s*(?=\d)/gi, 'Jesaja '],
+  [/\bJes(?:aj?)?\.\s*(?=\d)/gi, 'Jesaja '],
   [/\bJerem?\.\s*(?=\d)/gi, 'Jeremia '],
   [/\bKlaagl?\.\s*(?=\d)/gi, 'Klaagliederen '],
   [/\bEzech?\.\s*(?=\d)/gi, 'Ezechiël '],
@@ -324,7 +324,7 @@ const INLINE_ABBREVS: [RegExp, string][] = [
   [/\b2\s*Joh\.\s*(?=\d)/gi, '2 Johannes '],
   [/\b3\s*Joh\.\s*(?=\d)/gi, '3 Johannes '],
   [/\bJud\.\s*(?=\d)/gi, 'Judas '],
-  [/\bOpenb?\.\s*(?=\d)/gi, 'Openbaring '],
+  [/\bOp(?:enb?)?\.\s*(?=\d)/gi, 'Openbaring '],
 ];
 
 export function expandInlineRefs(text: string): string {
