@@ -27,7 +27,6 @@ const Boeklezer = lazy(() => import('./pages/Boeklezer'));
 const Preekvoorbereiding = lazy(() => import('./pages/Preekvoorbereiding'));
 const Bladwijzers = lazy(() => import('./pages/Bladwijzers'));
 const Leesrooster = lazy(() => import('./pages/Leesrooster'));
-const PremiumSuccess = lazy(() => import('./pages/PremiumSuccess'));
 const Admin = lazy(() => import('./pages/Admin'));
 
 /* ── SVG Tab Icons ── */
@@ -170,7 +169,6 @@ function AppShell() {
             <Route path="/bladwijzers" element={<Bladwijzers />} />
             <Route path="/leesrooster" element={<Leesrooster />} />
             <Route path="/instellingen" element={<Instellingen />} />
-            <Route path="/premium/success" element={<PremiumSuccess />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

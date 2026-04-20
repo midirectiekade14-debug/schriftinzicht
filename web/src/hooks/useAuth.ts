@@ -6,8 +6,6 @@ interface UserProfile {
   id: string;
   display_name: string | null;
   preferred_translation: string | null;
-  premium_until: string | null;
-  mollie_customer_id: string | null;
   created_at: string;
 }
 
@@ -17,7 +15,6 @@ interface AuthState {
   profile: UserProfile | null;
   loading: boolean;
   isLoggedIn: boolean;
-  isPremium: boolean;
   refreshProfile: () => Promise<void>;
 }
 
@@ -58,9 +55,5 @@ export function useAuth(): AuthState {
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
-  const isPremium = profile?.premium_until
-    ? new Date(profile.premium_until) > new Date()
-    : false;
-
-  return { user, session, profile, loading, isLoggedIn: !!user, isPremium, refreshProfile };
+  return { user, session, profile, loading, isLoggedIn: !!user, refreshProfile };
 }
