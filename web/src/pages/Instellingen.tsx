@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { clickable } from '../lib/a11y';
 
 const THEME_KEY = 'si-theme';
 
@@ -40,7 +41,7 @@ export default function Instellingen() {
       <div className="page">
         <div className="settings-section">
           <h3>Weergave</h3>
-          <div className="setting-row" onClick={toggleTheme} style={{ cursor: 'pointer' }}>
+          <div className="setting-row" {...clickable(toggleTheme, { label: `Thema wisselen, nu ${light ? 'licht' : 'donker'}` })} style={{ cursor: 'pointer' }}>
             <span>Thema</span>
             <span className="setting-value">{light ? 'Licht' : 'Donker'} {light ? '☽' : '☀'}</span>
           </div>
