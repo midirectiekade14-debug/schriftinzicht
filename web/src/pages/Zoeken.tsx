@@ -201,6 +201,7 @@ function useDailyVerse() {
         // Dagvers is niet kritiek
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return daily;
 }
@@ -367,11 +368,13 @@ export default function Zoeken() {
   useEffect(() => {
     const prefill = searchParams.get('q');
     if (prefill && prefill !== query) setQuery(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
     const prefill = searchParams.get('q');
     if (prefill && query === prefill && query) search();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, searchParams]);
 
   // Close suggestions when clicking outside
@@ -623,6 +626,7 @@ export default function Zoeken() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const search = useCallback(() => searchWithQuery(query), [query, searchWithQuery]);

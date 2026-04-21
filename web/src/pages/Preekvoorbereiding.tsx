@@ -340,12 +340,14 @@ export default function Preekvoorbereiding() {
     }
   }, [query]);
 
-  // Auto-search from example click
+  // Auto-search on mount when URL has ?q= param. Intentionally mount-only:
+  // later query changes are driven by user input + explicit search().
   useEffect(() => {
     if (query && !verses.length && !loading && !error) {
       const ref = parseReference(query);
       if (ref) search();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
