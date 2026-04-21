@@ -1,1 +1,0 @@
-const e={Kerkvaders:"#8B6840",Reformatie:"#A85A3D","Nadere Reformatie":"#C4956A","Puriteinse periode":"#6B7B5A",Puriteins:"#6B7B5A","18e eeuw":"#5A8A8B","19e eeuw":"#7A6B8B",Modern:"#8B8680"},r=e;export{r as E};
