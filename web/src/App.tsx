@@ -199,7 +199,7 @@ function AppShell() {
 
 export default function App() {
   return (
-    <BrowserRouter basename="/schriftinzicht">
+    <BrowserRouter>
       <ErrorBoundary>
         <Suspense fallback={<div className="page-loader" />}>
           <Routes>

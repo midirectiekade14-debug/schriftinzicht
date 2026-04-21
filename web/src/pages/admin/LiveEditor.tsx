@@ -94,7 +94,7 @@ export default function LiveEditor() {
   }
 
   const hasChanges = editText !== originalText;
-  const baseUrl = window.location.origin + '/schriftinzicht';
+  const baseUrl = window.location.origin;
 
   const quickLinks = [
     { label: 'Zoeken', path: '/zoeken' },

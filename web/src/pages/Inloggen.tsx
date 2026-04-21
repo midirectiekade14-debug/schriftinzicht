@@ -20,7 +20,7 @@ export default function Inloggen() {
     if (!email.trim()) { setError('Vul je e-mailadres in.'); return; }
     setLoading(true); setError(null); setSuccess(null);
     const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/schriftinzicht/inloggen`,
+      redirectTo: `${window.location.origin}/inloggen`,
     });
     if (err) setError(err.message);
     else setSuccess('Resetlink verstuurd! Check je inbox.');

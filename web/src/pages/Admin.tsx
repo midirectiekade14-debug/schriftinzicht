@@ -41,7 +41,7 @@ export default function Admin() {
         </div>
         <div className="adm-header-right">
           <span className="adm-header-user">{user?.email}</span>
-          <button className="adm-logout" onClick={async () => { await supabase.auth.signOut(); window.location.href = '/schriftinzicht/inloggen'; }}>Uitloggen</button>
+          <button className="adm-logout" onClick={async () => { await supabase.auth.signOut(); window.location.href = '/inloggen'; }}>Uitloggen</button>
         </div>
       </header>
 

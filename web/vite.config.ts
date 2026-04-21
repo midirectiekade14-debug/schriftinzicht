@@ -5,7 +5,7 @@ import compression from 'vite-plugin-compression'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/schriftinzicht/',
+  base: '/',
   plugins: [
     react(),
     // PWA disabled — service worker caused caching issues on GitHub Pages
