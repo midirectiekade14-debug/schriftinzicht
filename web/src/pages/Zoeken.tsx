@@ -441,7 +441,7 @@ export default function Zoeken() {
         setTextSermonTotal(cached.textSermonTotal); setTextSermons(cached.textSermons);
         setTextTab(cached.textTab);
         if (!cached.textResults.length && !cached.textCommentaries.length && !cached.textSermons.length) {
-          setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+          setError(`Geen resultaten gevonden voor "${q.trim()}". Probeer een andere spelling, een synoniem, of zoek op bijbelverwijzing (bijv. "Rom 8:28").`);
         }
         setLoading(false);
         return;
@@ -511,7 +511,7 @@ export default function Zoeken() {
         setCache(cacheKey, { textTotal, textResults, textCommTotal, textCommentaries, textSermonTotal, textSermons, textTab });
 
         if (!textResults.length && !textCommentaries.length && !textSermons.length) {
-          setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+          setError(`Geen resultaten gevonden voor "${q.trim()}". Probeer een andere spelling, een synoniem, of zoek op bijbelverwijzing (bijv. "Rom 8:28").`);
         }
       } catch {
         setError('Fout bij het zoeken.');
