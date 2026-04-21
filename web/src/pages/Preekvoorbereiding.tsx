@@ -8,8 +8,9 @@ import { truncate } from '../lib/truncate';
 import SelectionPopup from '../components/SelectionPopup';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
+import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
+import { clickable } from '../lib/a11y';
 
 interface CrossRefRow {
   id: string; votes: number; to_verse_end_id: string | null;
@@ -197,7 +198,7 @@ export default function Preekvoorbereiding() {
       const bookId = books[0].id;
 
       let { data: vData } = await supabase.from('bible_verses')
-        .select('*, bible_books(name, abbreviation)')
+        .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
         .eq('book_id', bookId)
         .eq('chapter', ref.chapter)
         .gte('verse', ref.verseStart)
@@ -207,7 +208,7 @@ export default function Preekvoorbereiding() {
       // Fallback: clamp verseStart > last verse to the actual last verse of the chapter.
       if (!vData?.length && ref.verseStart > 1) {
         const { data: lastVerse } = await supabase.from('bible_verses')
-          .select('*, bible_books(name, abbreviation)')
+          .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
           .eq('book_id', bookId)
           .eq('chapter', ref.chapter)
           .order('verse', { ascending: false })
@@ -216,7 +217,7 @@ export default function Preekvoorbereiding() {
       }
 
       if (!vData?.length) { setError('Geen verzen gevonden voor deze referentie.'); setLoading(false); return; }
-      setVerses(vData as BibleVerse[]);
+      setVerses(vData as unknown as BibleVerse[]);
 
       const verseIds = vData.map(v => v.id);
 
@@ -236,11 +237,12 @@ export default function Preekvoorbereiding() {
       };
       const [commRes, kantRes, crossRes, sermonRes, catRes] = await Promise.all([
         supabase.from('commentaries')
-          .select('*, authors(name, born_year, died_year, era)')
+          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
           .in('verse_id', verseIds)
           .neq('scope', 'book')
           .order('year_written', { ascending: true }),
-        supabase.from('kanttekeningen').select('*')
+        supabase.from('kanttekeningen')
+          .select('id, verse_id, marker, note_text, note_order')
           .in('verse_id', verseIds).order('note_order', { ascending: true }),
         supabase.from('cross_references')
           .select('id, votes, to_verse_end_id, to_verse:bible_verses!to_verse_id(id, book_id, chapter, verse, text_sv, bible_books(name, abbreviation))')
@@ -265,17 +267,8 @@ export default function Preekvoorbereiding() {
       logQueryError('sermons', (sermonRes as { error?: unknown }).error);
       logQueryError('catechism_proof_texts', (catRes as { error?: unknown }).error);
 
-      // Deduplicate commentaries per author per verse
-      const allComm = (commRes.data || []) as CommentaryWithAuthor[];
-      const seen = new Map<string, CommentaryWithAuthor>();
-      for (const c of allComm) {
-        const key = `${c.author_id}-${c.verse_id}`;
-        const existing = seen.get(key);
-        if (!existing || (c.scope === 'verse' && existing.scope !== 'verse')) {
-          seen.set(key, c);
-        }
-      }
-      const deduped = Array.from(seen.values());
+      const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
+      const deduped = dedupeCommentariesByAuthorVerse(allComm);
       // Sorteer op vers-volgorde, niet op jaar
       deduped.sort((a, b) => {
         const va = vData.find(v => v.id === a.verse_id);
@@ -338,12 +331,14 @@ export default function Preekvoorbereiding() {
     }
   }, [query]);
 
-  // Auto-search from example click
+  // Auto-search on mount when URL has ?q= param. Intentionally mount-only:
+  // later query changes are driven by user input + explicit search().
   useEffect(() => {
     if (query && !verses.length && !loading && !error) {
       const ref = parseReference(query);
       if (ref) search();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -389,6 +384,7 @@ export default function Preekvoorbereiding() {
           <div className="search-bar">
             <input
               type="text"
+              aria-label="Zoek bijbelgedeelte voor preekvoorbereiding"
               placeholder="Bijv. romeinen 8 vers 28 tot 30"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
@@ -398,7 +394,7 @@ export default function Preekvoorbereiding() {
             />
             <div className="search-actions">
               {query && (
-                <button className="search-action-btn search-clear" onClick={() => setQuery('')} title="Wissen" type="button">
+                <button className="search-action-btn search-clear" aria-label="Zoekterm wissen" onClick={() => setQuery('')} title="Wissen" type="button">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
@@ -407,6 +403,8 @@ export default function Preekvoorbereiding() {
               {voice.supported && (
                 <button
                   className={`search-action-btn search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                  aria-label={voice.listening ? 'Stop spraakherkenning' : 'Start spraakherkenning'}
+                  aria-pressed={voice.listening}
                   onClick={voice.toggle}
                   title="Spraakherkenning"
                   type="button"
@@ -503,7 +501,7 @@ export default function Preekvoorbereiding() {
         )}
 
         {loading && <div className="loader"><div className="spinner" /></div>}
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert" aria-live="assertive" aria-atomic="true">{error}</div>}
 
         {verses.length > 0 && !loading && (
           <>
@@ -578,7 +576,7 @@ export default function Preekvoorbereiding() {
                                 const vLabel = v ? `vs. ${v.verse}` : '';
                                 const vBookName = v?.bible_books?.name || '';
                                 return (
-                                  <div key={c.id} className="pv-comm-card" onClick={() => setExpandedComm(prev => ({ ...prev, [c.id]: !prev[c.id] }))}>
+                                  <div key={c.id} className="pv-comm-card" {...clickable(() => setExpandedComm(prev => ({ ...prev, [c.id]: !prev[c.id] })), { expanded: isOpen, label: `Verklaring van ${authorName} uitklappen` })}>
                                     <div className="pv-comm-top">
                                       {vLabel && v && (
                                         <Link
@@ -639,7 +637,7 @@ export default function Preekvoorbereiding() {
                     const authorName = s.authors?.name || 'Onbekend';
                     const years = s.authors?.born_year ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
                     return (
-                      <div key={s.id} className="pv-sermon-card" onClick={() => setExpandedSermon(prev => ({ ...prev, [s.id]: !prev[s.id] }))}>
+                      <div key={s.id} className="pv-sermon-card" {...clickable(() => setExpandedSermon(prev => ({ ...prev, [s.id]: !prev[s.id] })), { expanded: isOpen, label: `Preek van ${authorName} uitklappen` })}>
                         <div className="pv-sermon-header">
                           <span className="pv-sermon-title">{s.title}</span>
                           {s.year_preached && <span className="year-badge">{s.year_preached}</span>}

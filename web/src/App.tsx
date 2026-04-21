@@ -76,6 +76,12 @@ const IconOudvaders = () => (
     <circle cx="10" cy="6" r="3" /><path d="M4 17C4 13.5 6.5 11 10 11C13.5 11 16 13.5 16 17" />
   </svg>
 );
+const IconInstellingen = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="10" cy="10" r="2.5" />
+    <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4.05 4.05l1.4 1.4M14.55 14.55l1.4 1.4M4.05 15.95l1.4-1.4M14.55 5.45l1.4-1.4" />
+  </svg>
+);
 const IconMeer = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
     <circle cx="4" cy="10" r="1.5" fill="currentColor" /><circle cx="10" cy="10" r="1.5" fill="currentColor" /><circle cx="16" cy="10" r="1.5" fill="currentColor" />
@@ -93,7 +99,7 @@ const moreItems = [
   { path: '/belijdenissen', label: 'Belijdenissen', Icon: IconBelijdenissen },
   { path: '/oudvaders', label: 'Oudvaders', Icon: IconOudvaders },
   { path: '/bladwijzers', label: 'Bladwijzers', Icon: IconBladwijzers },
-  { path: '/instellingen', label: 'Instellingen', Icon: IconLeesrooster },
+  { path: '/instellingen', label: 'Instellingen', Icon: IconInstellingen },
 ];
 
 function MoreMenu() {

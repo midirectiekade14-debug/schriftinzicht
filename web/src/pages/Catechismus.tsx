@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 import { truncate } from '../lib/truncate';
 import { displayBookName } from '../lib/parseReference';
 import type { CatechismQuestion } from '../types/database';
+import { clickable } from '../lib/a11y';
 
 interface SundaySection {
   title: string;
@@ -207,7 +208,7 @@ export default function Catechismus() {
                     <div className="answer-label">Antwoord:</div>
                     <div className="answer-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="answer_text" data-edit-label={`Antwoord ${q.question_number}`}>{isOpen ? formatAnswer(answer) : preview}</div>
                     {hasMore && (
-                      <div className="expand-hint" onClick={() => toggleExpand(q.id)}>
+                      <div className="expand-hint" {...clickable(() => toggleExpand(q.id), { expanded: isOpen, label: isOpen ? 'Inklappen' : 'Meer lezen' })}>
                         {isOpen ? 'Inklappen \u25B2' : 'Meer lezen \u25BC'}
                       </div>
                     )}

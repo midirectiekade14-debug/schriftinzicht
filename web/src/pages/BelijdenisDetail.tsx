@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { truncate } from '../lib/truncate';
+import { clickable } from '../lib/a11y';
 
 interface Article {
   id: string;
@@ -181,11 +182,11 @@ export default function BelijdenisDetail() {
                     </svg>
                   </button>
                 </div>
-                <div className="bel-article-text" data-edit-table="confession_articles" data-edit-id={a.id} data-edit-col="article_text" data-edit-label={a.title || `Artikel ${a.article_number}`} onClick={() => toggleExpand(a.id)}>
+                <div className="bel-article-text" data-edit-table="confession_articles" data-edit-id={a.id} data-edit-col="article_text" data-edit-label={a.title || `Artikel ${a.article_number}`} {...clickable(() => toggleExpand(a.id), { expanded: isOpen, label: `${a.title || `Artikel ${a.article_number}`} uitklappen` })}>
                   {isOpen ? a.article_text : preview}
                 </div>
                 {a.article_text.length > 250 && (
-                  <div className="expand-hint" onClick={() => toggleExpand(a.id)}>
+                  <div className="expand-hint" {...clickable(() => toggleExpand(a.id), { expanded: isOpen, label: isOpen ? 'Inklappen' : 'Lees meer' })}>
                     {isOpen ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}
                   </div>
                 )}

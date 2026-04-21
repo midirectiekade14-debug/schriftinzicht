@@ -8,8 +8,9 @@ import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
+import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
+import { clickable } from '../lib/a11y';
 
 /** Glue OCR word-break fragments back together.
  *  PDF OCR sometimes splits the first letter of a word onto its own paragraph
@@ -200,6 +201,7 @@ function useDailyVerse() {
         // Dagvers is niet kritiek
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return daily;
 }
@@ -366,11 +368,13 @@ export default function Zoeken() {
   useEffect(() => {
     const prefill = searchParams.get('q');
     if (prefill && prefill !== query) setQuery(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
     const prefill = searchParams.get('q');
     if (prefill && query === prefill && query) search();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, searchParams]);
 
   // Close suggestions when clicking outside
@@ -437,7 +441,7 @@ export default function Zoeken() {
         setTextSermonTotal(cached.textSermonTotal); setTextSermons(cached.textSermons);
         setTextTab(cached.textTab);
         if (!cached.textResults.length && !cached.textCommentaries.length && !cached.textSermons.length) {
-          setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+          setError(`Geen resultaten gevonden voor "${q.trim()}". Probeer een andere spelling, een synoniem, of zoek op bijbelverwijzing (bijv. "Rom 8:28").`);
         }
         setLoading(false);
         return;
@@ -452,7 +456,7 @@ export default function Zoeken() {
             .ilike('text_sv', `%${q.trim()}%`),
           supabase
             .from('bible_verses')
-            .select('*, bible_books(name, abbreviation, testament, book_order)')
+            .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation, testament, book_order)')
             .ilike('text_sv', `%${q.trim()}%`)
             .order('book_id')
             .order('chapter')
@@ -464,7 +468,7 @@ export default function Zoeken() {
             .ilike('commentary_text', `%${q.trim()}%`),
           supabase
             .from('commentaries')
-            .select('*, authors(name, born_year, died_year, era)')
+            .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
             .ilike('commentary_text', `%${q.trim()}%`)
             .order('year_written', { ascending: true })
             .limit(100),
@@ -484,9 +488,9 @@ export default function Zoeken() {
         if (commRes.error) throw commRes.error;
         if (sermonRes.error) throw sermonRes.error;
         const textTotal = verseCount.count || 0;
-        const textResults = (versesRes.data || []) as BibleVerse[];
+        const textResults = (versesRes.data || []) as unknown as BibleVerse[];
         const textCommTotal = commCount.count || 0;
-        const textCommentaries = (commRes.data || []) as CommentaryWithAuthor[];
+        const textCommentaries = (commRes.data || []) as unknown as CommentaryWithAuthor[];
         const textSermonTotal = sermonCount.count || 0;
         const textSermons = (sermonRes.data || []) as unknown as SermonSearchRow[];
 
@@ -507,7 +511,7 @@ export default function Zoeken() {
         setCache(cacheKey, { textTotal, textResults, textCommTotal, textCommentaries, textSermonTotal, textSermons, textTab });
 
         if (!textResults.length && !textCommentaries.length && !textSermons.length) {
-          setError(`Geen resultaten gevonden voor "${q.trim()}".`);
+          setError(`Geen resultaten gevonden voor "${q.trim()}". Probeer een andere spelling, een synoniem, of zoek op bijbelverwijzing (bijv. "Rom 8:28").`);
         }
       } catch {
         setError('Fout bij het zoeken.');
@@ -540,7 +544,7 @@ export default function Zoeken() {
 
       // Fetch verse range
       let { data: vData } = await supabase.from('bible_verses')
-        .select('*, bible_books(name, abbreviation)')
+        .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
         .eq('book_id', bookId)
         .eq('chapter', ref.chapter)
         .gte('verse', ref.verseStart)
@@ -551,7 +555,7 @@ export default function Zoeken() {
       // 19:1 → "18:999" sentinel, or user enters Lev 18:999), clamp to the actual last verse.
       if (!vData?.length && ref.verseStart > 1) {
         const { data: lastVerse } = await supabase.from('bible_verses')
-          .select('*, bible_books(name, abbreviation)')
+          .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
           .eq('book_id', bookId)
           .eq('chapter', ref.chapter)
           .order('verse', { ascending: false })
@@ -574,40 +578,32 @@ export default function Zoeken() {
       setCurrentRef(actualRef);
       setRefLabel(formatRef(actualRef));
 
-      setVerses(vData as BibleVerse[]);
-      const verseIds = (vData as BibleVerse[]).map((v) => v.id);
+      setVerses(vData as unknown as BibleVerse[]);
+      const verseIds = (vData as unknown as BibleVerse[]).map((v) => v.id);
 
       // Parallel fetch all supplementary data
       const [commRes, kantRes, crossRes] = await Promise.all([
         supabase.from('commentaries')
-          .select('*, authors(name, born_year, died_year, era)')
+          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
           .in('verse_id', verseIds)
           .neq('scope', 'book')
           .order('year_written', { ascending: true }),
-        supabase.from('kanttekeningen').select('*')
+        supabase.from('kanttekeningen')
+          .select('id, verse_id, marker, note_text, note_order')
           .in('verse_id', verseIds).order('note_order', { ascending: true }),
         supabase.from('cross_references')
           .select('id, votes, to_verse_end_id, to_verse:bible_verses!to_verse_id(id, book_id, chapter, verse, text_sv, bible_books(name, abbreviation))')
           .in('from_verse_id', verseIds).order('votes', { ascending: false }).limit(20),
       ]);
 
-      // De-duplicate: prefer verse scope over passage for same author+verse
-      const allComm = (commRes.data || []) as CommentaryWithAuthor[];
-      const seen = new Map<string, CommentaryWithAuthor>();
-      for (const c of allComm) {
-        const key = `${c.author_id}-${c.verse_id}`;
-        const existing = seen.get(key);
-        if (!existing || (c.scope === 'verse' && existing.scope !== 'verse')) {
-          seen.set(key, c);
-        }
-      }
-      const deduped = Array.from(seen.values());
+      const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
+      const deduped = dedupeCommentariesByAuthorVerse(allComm);
       deduped.sort((a, b) => (a.year_written || 0) - (b.year_written || 0));
 
       setCommentaries(deduped);
       // Sort kanttekeningen by verse number, then note_order
       const kantData = (kantRes.data || []) as Kanttekening[];
-      const verseNumMap = new Map((vData as BibleVerse[]).map((v) => [v.id, v.verse]));
+      const verseNumMap = new Map((vData as unknown as BibleVerse[]).map((v) => [v.id, v.verse]));
       kantData.sort((a, b) => {
         const va = verseNumMap.get(a.verse_id) || 0;
         const vb = verseNumMap.get(b.verse_id) || 0;
@@ -621,6 +617,7 @@ export default function Zoeken() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const search = useCallback(() => searchWithQuery(query), [query, searchWithQuery]);
@@ -712,6 +709,11 @@ export default function Zoeken() {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Zoek op bijbelverwijzing of trefwoord"
+              role="combobox"
+              aria-expanded={showSuggestions && suggestions.length > 0}
+              aria-autocomplete="list"
+              aria-controls="zoeken-suggestions"
               placeholder="Bijbelreferentie of trefwoord…"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setSelectedSuggestion(-1); }}
@@ -722,7 +724,7 @@ export default function Zoeken() {
             />
             <div className="search-actions">
               {query && (
-                <button className="search-action-btn search-clear" onClick={() => { setQuery(''); inputRef.current?.focus(); }} title="Wissen" type="button">
+                <button className="search-action-btn search-clear" aria-label="Zoekterm wissen" onClick={() => { setQuery(''); inputRef.current?.focus(); }} title="Wissen" type="button">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
@@ -731,6 +733,8 @@ export default function Zoeken() {
               {voice.supported && (
                 <button
                   className={`search-action-btn search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                  aria-label={voice.listening ? 'Stop spraakherkenning' : 'Start spraakherkenning'}
+                  aria-pressed={voice.listening}
                   onClick={voice.toggle}
                   title="Spraakherkenning"
                   type="button"
@@ -743,7 +747,7 @@ export default function Zoeken() {
                   </svg>
                 </button>
               )}
-              <button className="search-submit-btn" onClick={() => { search(); setShowSuggestions(false); }} type="button">
+              <button className="search-submit-btn" aria-label="Zoeken" onClick={() => { search(); setShowSuggestions(false); }} type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
                 </svg>
@@ -753,11 +757,13 @@ export default function Zoeken() {
 
           {/* Autocomplete dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="ac-dropdown" ref={suggestionsRef}>
+            <div className="ac-dropdown" ref={suggestionsRef} id="zoeken-suggestions" role="listbox" aria-label="Zoeksuggesties">
               {suggestions.map((sug, i) => (
                 <div
                   key={sug.label}
                   className={`ac-item ${i === selectedSuggestion ? 'ac-selected' : ''}`}
+                  role="option"
+                  aria-selected={i === selectedSuggestion}
                   onMouseDown={() => selectSuggestion(sug)}
                   onMouseEnter={() => setSelectedSuggestion(i)}
                 >
@@ -772,7 +778,7 @@ export default function Zoeken() {
 
         {/* Dagvers — altijd zichtbaar onder zoekbalk */}
         {dailyVerse && !loading && verses.length === 0 && textResults.length === 0 && (
-          <div className="daily-card" onClick={() => setDailyExpanded(!dailyExpanded)}>
+          <div className="daily-card" {...clickable(() => setDailyExpanded(!dailyExpanded), { expanded: dailyExpanded, label: 'Dagvers uitklappen' })}>
             <div className="daily-badge">{'\u2726'} Dagvers</div>
             <div className="daily-ref">{dailyVerse.ref}</div>
             <div className="daily-text">{dailyVerse.text}</div>
@@ -805,7 +811,7 @@ export default function Zoeken() {
           <div className="sh-bar">
             {saved.length > 0 && (
               <div className="sh-section">
-                <div className="sh-section-header" onClick={() => setShowSaved(!showSaved)}>
+                <div className="sh-section-header" {...clickable(() => setShowSaved(!showSaved), { expanded: showSaved, label: 'Opgeslagen uitklappen' })}>
                   <span className="sh-section-title">
                     <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{verticalAlign: 'middle', marginRight: 4}}>
                       <path d="M5 3C5 2.44772 5.44772 2 6 2H14C14.5523 2 15 2.44772 15 3V17.5L10 14L5 17.5V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
@@ -850,7 +856,7 @@ export default function Zoeken() {
         )}
 
         {loading && <div className="loader"><div className="spinner" /></div>}
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert" aria-live="assertive" aria-atomic="true">{error}</div>}
 
         {verses.length > 0 && !loading && (
           <>
@@ -1007,7 +1013,7 @@ export default function Zoeken() {
                           const years = item.authors?.born_year
                             ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
                           return (
-                            <div key={item.id} className={`commentary-card${isExpanded ? ' print-show' : ''}`} onClick={() => toggleExpand(item.id)}>
+                            <div key={item.id} className={`commentary-card${isExpanded ? ' print-show' : ''}`} {...clickable(() => toggleExpand(item.id), { expanded: isExpanded, label: `Verklaring van ${authorName} uitklappen` })}>
                               <div className="commentary-header">
                                 <span className="author-name">{authorName}</span>
                                 {years && <span className="author-years">{years}</span>}
@@ -1171,7 +1177,7 @@ export default function Zoeken() {
                       ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
                     const era = item.authors?.era;
                     return (
-                      <div key={item.id} className={`commentary-card${isExp ? ' print-show' : ''}`} onClick={() => toggleExpand(item.id)}>
+                      <div key={item.id} className={`commentary-card${isExp ? ' print-show' : ''}`} {...clickable(() => toggleExpand(item.id), { expanded: isExp, label: `Verklaring van ${authorName} uitklappen` })}>
                         <div className="commentary-header">
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}
@@ -1215,7 +1221,7 @@ export default function Zoeken() {
                       ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
                     const era = s.authors?.era;
                     return (
-                      <div key={s.id} className="commentary-card" onClick={() => toggleExpand(s.id)}>
+                      <div key={s.id} className="commentary-card" {...clickable(() => toggleExpand(s.id), { expanded: isExp, label: `Preek van ${authorName} uitklappen` })}>
                         <div className="commentary-header">
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}

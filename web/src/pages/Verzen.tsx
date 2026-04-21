@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { BibleVerse, Kanttekening } from '../types/database';
@@ -6,6 +6,7 @@ import { truncate } from '../lib/truncate';
 import { displayBookName, expandInlineRefs, sanitizeContent } from '../lib/parseReference';
 import SelectionPopup from '../components/SelectionPopup';
 import { type CommentaryWithAuthor } from '../lib/constants';
+import { clickable } from '../lib/a11y';
 
 interface CrossRefRow {
   id: string;
@@ -75,11 +76,23 @@ export default function Verzen() {
 
   const chapterNum = parseInt(chapter!, 10);
 
+  interface VerseDetailCache {
+    kanttekeningen: Kanttekening[];
+    commentaries: CommentaryWithAuthor[];
+    crossRefs: CrossRefRow[];
+    sermons: SermonRow[];
+  }
+  const detailCache = useRef<Map<string, VerseDetailCache>>(new Map());
+
+  useEffect(() => {
+    detailCache.current.clear();
+  }, [bookId, chapter]);
+
   useEffect(() => {
     setError('');
     supabase
       .from('bible_verses')
-      .select('*')
+      .select('id, book_id, chapter, verse, text_sv, text_hsv')
       .eq('book_id', bookId!)
       .eq('chapter', chapterNum)
       .order('verse', { ascending: true })
@@ -137,20 +150,31 @@ export default function Verzen() {
     }
 
     setExpandedVerse(verseId);
-    setDetailLoading(true);
     setExpandedCommentary({});
     setExpandedSermon({});
+
+    const cached = detailCache.current.get(verseId);
+    if (cached) {
+      setKanttekeningen(cached.kanttekeningen);
+      setCommentaries(cached.commentaries);
+      setCrossRefs(cached.crossRefs);
+      setSermons(cached.sermons);
+      setDetailLoading(false);
+      return;
+    }
+
+    setDetailLoading(true);
 
     try {
     const [kantRes, commRes, crossRes, sermonRes] = await Promise.all([
       supabase
         .from('kanttekeningen')
-        .select('*')
+        .select('id, verse_id, marker, note_text, note_order')
         .eq('verse_id', verseId)
         .order('note_order', { ascending: true }),
       supabase
         .from('commentaries')
-        .select('*, authors(name, born_year, died_year)')
+        .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year)')
         .eq('verse_id', verseId)
         .neq('scope', 'book')
         .order('year_written', { ascending: true }),
@@ -169,7 +193,7 @@ export default function Verzen() {
 
     setKanttekeningen(kantRes.data || []);
 
-    const allComm = (commRes.data || []) as CommentaryWithAuthor[];
+    const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
     const byAuthor = new Map<string, CommentaryWithAuthor[]>();
     for (const c of allComm) {
       const list = byAuthor.get(c.author_id) || [];
@@ -186,9 +210,18 @@ export default function Verzen() {
       }
     }
     deduped.sort((a, b) => (a.year_written || 0) - (b.year_written || 0));
+    const kantData = kantRes.data || [];
+    const crossData = (crossRes.data || []) as unknown as CrossRefRow[];
+    const sermonData = (sermonRes.data || []) as unknown as SermonRow[];
     setCommentaries(deduped);
-    setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
-    setSermons((sermonRes.data || []) as unknown as SermonRow[]);
+    setCrossRefs(crossData);
+    setSermons(sermonData);
+    detailCache.current.set(verseId, {
+      kanttekeningen: kantData,
+      commentaries: deduped,
+      crossRefs: crossData,
+      sermons: sermonData,
+    });
     } catch {
       setError('Kon details niet laden.');
     } finally {
@@ -297,11 +330,11 @@ export default function Verzen() {
                 <span key={v.id}>
                   <span
                     className={`bijbel-verse ${isExpanded ? 'bijbel-verse-active' : ''}${hlStart && v.verse >= hlStart && v.verse <= hlEnd ? ' bijbel-verse-hl' : ''}`}
-                    onClick={() => {
+                    {...clickable(() => {
                       const sel = window.getSelection();
                       if (sel && sel.toString().length > 0) return;
                       toggleVerse(v.id);
-                    }}
+                    }, { expanded: isExpanded, label: `Vers ${v.verse} uitklappen` })}
                   >
                     <sup className="bijbel-vnum">{v.verse}</sup>
                     <span data-edit-table="bible_verses" data-edit-id={v.id} data-edit-col="text_sv" data-edit-label={`${bookName} ${chapterNum}:${v.verse}`}>{v.text_sv}</span>
@@ -358,10 +391,10 @@ export default function Verzen() {
                                   <div
                                     key={c.id}
                                     className="commentary-card"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                    {...clickable((e) => {
+                                      e?.stopPropagation();
                                       toggleCommentary(c.id);
-                                    }}
+                                    }, { expanded: isOpen, label: `Verklaring van ${authorName} uitklappen` })}
                                   >
                                     <div className="commentary-header">
                                       <span className="author-name">{authorName}</span>

@@ -4,6 +4,7 @@ import { thematicPlan, getWeekOfYear, SEASON_COLORS } from '../data/thematicPlan
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { clickable } from '../lib/a11y';
 
 const PROGRESS_KEY = 'si-thematic-progress';
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -167,7 +168,7 @@ export default function Leesrooster() {
 
             return (
               <div key={i} className={`lr-day-card${done ? ' done' : ''}${isExpanded ? ' expanded' : ''}`}>
-                <div className="lr-day-top" onClick={() => setExpandedDay(isExpanded ? -1 : i)}>
+                <div className="lr-day-top" {...clickable(() => setExpandedDay(isExpanded ? -1 : i), { expanded: isExpanded, label: `${DAYS[i]} uitklappen` })}>
                   <button className="lr-checkbox" onClick={(e) => { e.stopPropagation(); toggleProgress(i); }}
                     aria-label={done ? 'Gelezen' : 'Markeer als gelezen'} />
                   <div className="lr-day-info">
