@@ -8,7 +8,7 @@ import { truncate } from '../lib/truncate';
 import SelectionPopup from '../components/SelectionPopup';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
+import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
 import { clickable } from '../lib/a11y';
 
@@ -267,17 +267,8 @@ export default function Preekvoorbereiding() {
       logQueryError('sermons', (sermonRes as { error?: unknown }).error);
       logQueryError('catechism_proof_texts', (catRes as { error?: unknown }).error);
 
-      // Deduplicate commentaries per author per verse
       const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
-      const seen = new Map<string, CommentaryWithAuthor>();
-      for (const c of allComm) {
-        const key = `${c.author_id}-${c.verse_id}`;
-        const existing = seen.get(key);
-        if (!existing || (c.scope === 'verse' && existing.scope !== 'verse')) {
-          seen.set(key, c);
-        }
-      }
-      const deduped = Array.from(seen.values());
+      const deduped = dedupeCommentariesByAuthorVerse(allComm);
       // Sorteer op vers-volgorde, niet op jaar
       deduped.sort((a, b) => {
         const va = vData.find(v => v.id === a.verse_id);

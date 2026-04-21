@@ -14,3 +14,21 @@ export const ERA_COLORS_HEX: Record<string, string> = {
 export const ERA_COLORS = ERA_COLORS_HEX;
 
 export type CommentaryWithAuthor = Commentary;
+
+/**
+ * Dedupliceert verklaringen per author+verse, waarbij 'verse'-scope
+ * voorrang krijgt op andere scopes (bijv. 'passage' of 'book').
+ */
+export function dedupeCommentariesByAuthorVerse(
+  rows: CommentaryWithAuthor[]
+): CommentaryWithAuthor[] {
+  const seen = new Map<string, CommentaryWithAuthor>();
+  for (const c of rows) {
+    const key = `${c.author_id}-${c.verse_id}`;
+    const existing = seen.get(key);
+    if (!existing || (c.scope === 'verse' && existing.scope !== 'verse')) {
+      seen.set(key, c);
+    }
+  }
+  return Array.from(seen.values());
+}

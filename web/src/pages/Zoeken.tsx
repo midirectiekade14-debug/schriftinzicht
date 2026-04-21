@@ -8,7 +8,7 @@ import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
+import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
 import { clickable } from '../lib/a11y';
 
@@ -596,17 +596,8 @@ export default function Zoeken() {
           .in('from_verse_id', verseIds).order('votes', { ascending: false }).limit(20),
       ]);
 
-      // De-duplicate: prefer verse scope over passage for same author+verse
       const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
-      const seen = new Map<string, CommentaryWithAuthor>();
-      for (const c of allComm) {
-        const key = `${c.author_id}-${c.verse_id}`;
-        const existing = seen.get(key);
-        if (!existing || (c.scope === 'verse' && existing.scope !== 'verse')) {
-          seen.set(key, c);
-        }
-      }
-      const deduped = Array.from(seen.values());
+      const deduped = dedupeCommentariesByAuthorVerse(allComm);
       deduped.sort((a, b) => (a.year_written || 0) - (b.year_written || 0));
 
       setCommentaries(deduped);
