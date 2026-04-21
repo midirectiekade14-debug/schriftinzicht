@@ -390,6 +390,7 @@ export default function Preekvoorbereiding() {
           <div className="search-bar">
             <input
               type="text"
+              aria-label="Zoek bijbelgedeelte voor preekvoorbereiding"
               placeholder="Bijv. romeinen 8 vers 28 tot 30"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
@@ -399,7 +400,7 @@ export default function Preekvoorbereiding() {
             />
             <div className="search-actions">
               {query && (
-                <button className="search-action-btn search-clear" onClick={() => setQuery('')} title="Wissen" type="button">
+                <button className="search-action-btn search-clear" aria-label="Zoekterm wissen" onClick={() => setQuery('')} title="Wissen" type="button">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
@@ -408,6 +409,8 @@ export default function Preekvoorbereiding() {
               {voice.supported && (
                 <button
                   className={`search-action-btn search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                  aria-label={voice.listening ? 'Stop spraakherkenning' : 'Start spraakherkenning'}
+                  aria-pressed={voice.listening}
                   onClick={voice.toggle}
                   title="Spraakherkenning"
                   type="button"
@@ -504,7 +507,7 @@ export default function Preekvoorbereiding() {
         )}
 
         {loading && <div className="loader"><div className="spinner" /></div>}
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert" aria-live="assertive" aria-atomic="true">{error}</div>}
 
         {verses.length > 0 && !loading && (
           <>

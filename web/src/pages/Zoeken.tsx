@@ -713,6 +713,11 @@ export default function Zoeken() {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Zoek op bijbelverwijzing of trefwoord"
+              role="combobox"
+              aria-expanded={showSuggestions && suggestions.length > 0}
+              aria-autocomplete="list"
+              aria-controls="zoeken-suggestions"
               placeholder="Bijbelreferentie of trefwoord…"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setSelectedSuggestion(-1); }}
@@ -723,7 +728,7 @@ export default function Zoeken() {
             />
             <div className="search-actions">
               {query && (
-                <button className="search-action-btn search-clear" onClick={() => { setQuery(''); inputRef.current?.focus(); }} title="Wissen" type="button">
+                <button className="search-action-btn search-clear" aria-label="Zoekterm wissen" onClick={() => { setQuery(''); inputRef.current?.focus(); }} title="Wissen" type="button">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
@@ -732,6 +737,8 @@ export default function Zoeken() {
               {voice.supported && (
                 <button
                   className={`search-action-btn search-voice${voice.listening ? ' search-voice-active' : ''}`}
+                  aria-label={voice.listening ? 'Stop spraakherkenning' : 'Start spraakherkenning'}
+                  aria-pressed={voice.listening}
                   onClick={voice.toggle}
                   title="Spraakherkenning"
                   type="button"
@@ -744,7 +751,7 @@ export default function Zoeken() {
                   </svg>
                 </button>
               )}
-              <button className="search-submit-btn" onClick={() => { search(); setShowSuggestions(false); }} type="button">
+              <button className="search-submit-btn" aria-label="Zoeken" onClick={() => { search(); setShowSuggestions(false); }} type="button">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
                 </svg>
@@ -754,11 +761,13 @@ export default function Zoeken() {
 
           {/* Autocomplete dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="ac-dropdown" ref={suggestionsRef}>
+            <div className="ac-dropdown" ref={suggestionsRef} id="zoeken-suggestions" role="listbox" aria-label="Zoeksuggesties">
               {suggestions.map((sug, i) => (
                 <div
                   key={sug.label}
                   className={`ac-item ${i === selectedSuggestion ? 'ac-selected' : ''}`}
+                  role="option"
+                  aria-selected={i === selectedSuggestion}
                   onMouseDown={() => selectSuggestion(sug)}
                   onMouseEnter={() => setSelectedSuggestion(i)}
                 >
@@ -851,7 +860,7 @@ export default function Zoeken() {
         )}
 
         {loading && <div className="loader"><div className="spinner" /></div>}
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert" aria-live="assertive" aria-atomic="true">{error}</div>}
 
         {verses.length > 0 && !loading && (
           <>
