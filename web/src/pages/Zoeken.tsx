@@ -10,6 +10,7 @@ import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
+import { clickable } from '../lib/a11y';
 
 /** Glue OCR word-break fragments back together.
  *  PDF OCR sometimes splits the first letter of a word onto its own paragraph
@@ -772,7 +773,7 @@ export default function Zoeken() {
 
         {/* Dagvers — altijd zichtbaar onder zoekbalk */}
         {dailyVerse && !loading && verses.length === 0 && textResults.length === 0 && (
-          <div className="daily-card" onClick={() => setDailyExpanded(!dailyExpanded)}>
+          <div className="daily-card" {...clickable(() => setDailyExpanded(!dailyExpanded), { expanded: dailyExpanded, label: 'Dagvers uitklappen' })}>
             <div className="daily-badge">{'\u2726'} Dagvers</div>
             <div className="daily-ref">{dailyVerse.ref}</div>
             <div className="daily-text">{dailyVerse.text}</div>
@@ -805,7 +806,7 @@ export default function Zoeken() {
           <div className="sh-bar">
             {saved.length > 0 && (
               <div className="sh-section">
-                <div className="sh-section-header" onClick={() => setShowSaved(!showSaved)}>
+                <div className="sh-section-header" {...clickable(() => setShowSaved(!showSaved), { expanded: showSaved, label: 'Opgeslagen uitklappen' })}>
                   <span className="sh-section-title">
                     <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{verticalAlign: 'middle', marginRight: 4}}>
                       <path d="M5 3C5 2.44772 5.44772 2 6 2H14C14.5523 2 15 2.44772 15 3V17.5L10 14L5 17.5V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
@@ -1007,7 +1008,7 @@ export default function Zoeken() {
                           const years = item.authors?.born_year
                             ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
                           return (
-                            <div key={item.id} className={`commentary-card${isExpanded ? ' print-show' : ''}`} onClick={() => toggleExpand(item.id)}>
+                            <div key={item.id} className={`commentary-card${isExpanded ? ' print-show' : ''}`} {...clickable(() => toggleExpand(item.id), { expanded: isExpanded, label: `Verklaring van ${authorName} uitklappen` })}>
                               <div className="commentary-header">
                                 <span className="author-name">{authorName}</span>
                                 {years && <span className="author-years">{years}</span>}
@@ -1171,7 +1172,7 @@ export default function Zoeken() {
                       ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
                     const era = item.authors?.era;
                     return (
-                      <div key={item.id} className={`commentary-card${isExp ? ' print-show' : ''}`} onClick={() => toggleExpand(item.id)}>
+                      <div key={item.id} className={`commentary-card${isExp ? ' print-show' : ''}`} {...clickable(() => toggleExpand(item.id), { expanded: isExp, label: `Verklaring van ${authorName} uitklappen` })}>
                         <div className="commentary-header">
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}
@@ -1215,7 +1216,7 @@ export default function Zoeken() {
                       ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
                     const era = s.authors?.era;
                     return (
-                      <div key={s.id} className="commentary-card" onClick={() => toggleExpand(s.id)}>
+                      <div key={s.id} className="commentary-card" {...clickable(() => toggleExpand(s.id), { expanded: isExp, label: `Preek van ${authorName} uitklappen` })}>
                         <div className="commentary-header">
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}
