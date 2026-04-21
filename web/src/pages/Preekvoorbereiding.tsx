@@ -10,6 +10,7 @@ import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { ERA_COLORS, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
+import { clickable } from '../lib/a11y';
 
 interface CrossRefRow {
   id: string; votes: number; to_verse_end_id: string | null;
@@ -578,7 +579,7 @@ export default function Preekvoorbereiding() {
                                 const vLabel = v ? `vs. ${v.verse}` : '';
                                 const vBookName = v?.bible_books?.name || '';
                                 return (
-                                  <div key={c.id} className="pv-comm-card" onClick={() => setExpandedComm(prev => ({ ...prev, [c.id]: !prev[c.id] }))}>
+                                  <div key={c.id} className="pv-comm-card" {...clickable(() => setExpandedComm(prev => ({ ...prev, [c.id]: !prev[c.id] })), { expanded: isOpen, label: `Verklaring van ${authorName} uitklappen` })}>
                                     <div className="pv-comm-top">
                                       {vLabel && v && (
                                         <Link
@@ -639,7 +640,7 @@ export default function Preekvoorbereiding() {
                     const authorName = s.authors?.name || 'Onbekend';
                     const years = s.authors?.born_year ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
                     return (
-                      <div key={s.id} className="pv-sermon-card" onClick={() => setExpandedSermon(prev => ({ ...prev, [s.id]: !prev[s.id] }))}>
+                      <div key={s.id} className="pv-sermon-card" {...clickable(() => setExpandedSermon(prev => ({ ...prev, [s.id]: !prev[s.id] })), { expanded: isOpen, label: `Preek van ${authorName} uitklappen` })}>
                         <div className="pv-sermon-header">
                           <span className="pv-sermon-title">{s.title}</span>
                           {s.year_preached && <span className="year-badge">{s.year_preached}</span>}

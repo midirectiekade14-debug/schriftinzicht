@@ -6,6 +6,7 @@ import { truncate } from '../lib/truncate';
 import { displayBookName, expandInlineRefs, sanitizeContent } from '../lib/parseReference';
 import SelectionPopup from '../components/SelectionPopup';
 import { type CommentaryWithAuthor } from '../lib/constants';
+import { clickable } from '../lib/a11y';
 
 interface CrossRefRow {
   id: string;
@@ -297,11 +298,11 @@ export default function Verzen() {
                 <span key={v.id}>
                   <span
                     className={`bijbel-verse ${isExpanded ? 'bijbel-verse-active' : ''}${hlStart && v.verse >= hlStart && v.verse <= hlEnd ? ' bijbel-verse-hl' : ''}`}
-                    onClick={() => {
+                    {...clickable(() => {
                       const sel = window.getSelection();
                       if (sel && sel.toString().length > 0) return;
                       toggleVerse(v.id);
-                    }}
+                    }, { expanded: isExpanded, label: `Vers ${v.verse} uitklappen` })}
                   >
                     <sup className="bijbel-vnum">{v.verse}</sup>
                     <span data-edit-table="bible_verses" data-edit-id={v.id} data-edit-col="text_sv" data-edit-label={`${bookName} ${chapterNum}:${v.verse}`}>{v.text_sv}</span>
@@ -358,10 +359,10 @@ export default function Verzen() {
                                   <div
                                     key={c.id}
                                     className="commentary-card"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                    {...clickable((e) => {
+                                      e?.stopPropagation();
                                       toggleCommentary(c.id);
-                                    }}
+                                    }, { expanded: isOpen, label: `Verklaring van ${authorName} uitklappen` })}
                                   >
                                     <div className="commentary-header">
                                       <span className="author-name">{authorName}</span>
