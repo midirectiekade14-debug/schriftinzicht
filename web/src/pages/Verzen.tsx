@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { BibleVerse, Kanttekening } from '../types/database';
@@ -76,6 +76,18 @@ export default function Verzen() {
 
   const chapterNum = parseInt(chapter!, 10);
 
+  interface VerseDetailCache {
+    kanttekeningen: Kanttekening[];
+    commentaries: CommentaryWithAuthor[];
+    crossRefs: CrossRefRow[];
+    sermons: SermonRow[];
+  }
+  const detailCache = useRef<Map<string, VerseDetailCache>>(new Map());
+
+  useEffect(() => {
+    detailCache.current.clear();
+  }, [bookId, chapter]);
+
   useEffect(() => {
     setError('');
     supabase
@@ -138,9 +150,20 @@ export default function Verzen() {
     }
 
     setExpandedVerse(verseId);
-    setDetailLoading(true);
     setExpandedCommentary({});
     setExpandedSermon({});
+
+    const cached = detailCache.current.get(verseId);
+    if (cached) {
+      setKanttekeningen(cached.kanttekeningen);
+      setCommentaries(cached.commentaries);
+      setCrossRefs(cached.crossRefs);
+      setSermons(cached.sermons);
+      setDetailLoading(false);
+      return;
+    }
+
+    setDetailLoading(true);
 
     try {
     const [kantRes, commRes, crossRes, sermonRes] = await Promise.all([
@@ -187,9 +210,18 @@ export default function Verzen() {
       }
     }
     deduped.sort((a, b) => (a.year_written || 0) - (b.year_written || 0));
+    const kantData = kantRes.data || [];
+    const crossData = (crossRes.data || []) as unknown as CrossRefRow[];
+    const sermonData = (sermonRes.data || []) as unknown as SermonRow[];
     setCommentaries(deduped);
-    setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
-    setSermons((sermonRes.data || []) as unknown as SermonRow[]);
+    setCrossRefs(crossData);
+    setSermons(sermonData);
+    detailCache.current.set(verseId, {
+      kanttekeningen: kantData,
+      commentaries: deduped,
+      crossRefs: crossData,
+      sermons: sermonData,
+    });
     } catch {
       setError('Kon details niet laden.');
     } finally {
