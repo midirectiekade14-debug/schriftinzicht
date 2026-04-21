@@ -198,7 +198,7 @@ export default function Preekvoorbereiding() {
       const bookId = books[0].id;
 
       let { data: vData } = await supabase.from('bible_verses')
-        .select('*, bible_books(name, abbreviation)')
+        .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
         .eq('book_id', bookId)
         .eq('chapter', ref.chapter)
         .gte('verse', ref.verseStart)
@@ -208,7 +208,7 @@ export default function Preekvoorbereiding() {
       // Fallback: clamp verseStart > last verse to the actual last verse of the chapter.
       if (!vData?.length && ref.verseStart > 1) {
         const { data: lastVerse } = await supabase.from('bible_verses')
-          .select('*, bible_books(name, abbreviation)')
+          .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
           .eq('book_id', bookId)
           .eq('chapter', ref.chapter)
           .order('verse', { ascending: false })
@@ -217,7 +217,7 @@ export default function Preekvoorbereiding() {
       }
 
       if (!vData?.length) { setError('Geen verzen gevonden voor deze referentie.'); setLoading(false); return; }
-      setVerses(vData as BibleVerse[]);
+      setVerses(vData as unknown as BibleVerse[]);
 
       const verseIds = vData.map(v => v.id);
 
@@ -237,11 +237,12 @@ export default function Preekvoorbereiding() {
       };
       const [commRes, kantRes, crossRes, sermonRes, catRes] = await Promise.all([
         supabase.from('commentaries')
-          .select('*, authors(name, born_year, died_year, era)')
+          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
           .in('verse_id', verseIds)
           .neq('scope', 'book')
           .order('year_written', { ascending: true }),
-        supabase.from('kanttekeningen').select('*')
+        supabase.from('kanttekeningen')
+          .select('id, verse_id, marker, note_text, note_order')
           .in('verse_id', verseIds).order('note_order', { ascending: true }),
         supabase.from('cross_references')
           .select('id, votes, to_verse_end_id, to_verse:bible_verses!to_verse_id(id, book_id, chapter, verse, text_sv, bible_books(name, abbreviation))')
@@ -267,7 +268,7 @@ export default function Preekvoorbereiding() {
       logQueryError('catechism_proof_texts', (catRes as { error?: unknown }).error);
 
       // Deduplicate commentaries per author per verse
-      const allComm = (commRes.data || []) as CommentaryWithAuthor[];
+      const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
       const seen = new Map<string, CommentaryWithAuthor>();
       for (const c of allComm) {
         const key = `${c.author_id}-${c.verse_id}`;

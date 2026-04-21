@@ -453,7 +453,7 @@ export default function Zoeken() {
             .ilike('text_sv', `%${q.trim()}%`),
           supabase
             .from('bible_verses')
-            .select('*, bible_books(name, abbreviation, testament, book_order)')
+            .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation, testament, book_order)')
             .ilike('text_sv', `%${q.trim()}%`)
             .order('book_id')
             .order('chapter')
@@ -465,7 +465,7 @@ export default function Zoeken() {
             .ilike('commentary_text', `%${q.trim()}%`),
           supabase
             .from('commentaries')
-            .select('*, authors(name, born_year, died_year, era)')
+            .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
             .ilike('commentary_text', `%${q.trim()}%`)
             .order('year_written', { ascending: true })
             .limit(100),
@@ -485,9 +485,9 @@ export default function Zoeken() {
         if (commRes.error) throw commRes.error;
         if (sermonRes.error) throw sermonRes.error;
         const textTotal = verseCount.count || 0;
-        const textResults = (versesRes.data || []) as BibleVerse[];
+        const textResults = (versesRes.data || []) as unknown as BibleVerse[];
         const textCommTotal = commCount.count || 0;
-        const textCommentaries = (commRes.data || []) as CommentaryWithAuthor[];
+        const textCommentaries = (commRes.data || []) as unknown as CommentaryWithAuthor[];
         const textSermonTotal = sermonCount.count || 0;
         const textSermons = (sermonRes.data || []) as unknown as SermonSearchRow[];
 
@@ -541,7 +541,7 @@ export default function Zoeken() {
 
       // Fetch verse range
       let { data: vData } = await supabase.from('bible_verses')
-        .select('*, bible_books(name, abbreviation)')
+        .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
         .eq('book_id', bookId)
         .eq('chapter', ref.chapter)
         .gte('verse', ref.verseStart)
@@ -552,7 +552,7 @@ export default function Zoeken() {
       // 19:1 → "18:999" sentinel, or user enters Lev 18:999), clamp to the actual last verse.
       if (!vData?.length && ref.verseStart > 1) {
         const { data: lastVerse } = await supabase.from('bible_verses')
-          .select('*, bible_books(name, abbreviation)')
+          .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation)')
           .eq('book_id', bookId)
           .eq('chapter', ref.chapter)
           .order('verse', { ascending: false })
@@ -575,17 +575,18 @@ export default function Zoeken() {
       setCurrentRef(actualRef);
       setRefLabel(formatRef(actualRef));
 
-      setVerses(vData as BibleVerse[]);
-      const verseIds = (vData as BibleVerse[]).map((v) => v.id);
+      setVerses(vData as unknown as BibleVerse[]);
+      const verseIds = (vData as unknown as BibleVerse[]).map((v) => v.id);
 
       // Parallel fetch all supplementary data
       const [commRes, kantRes, crossRes] = await Promise.all([
         supabase.from('commentaries')
-          .select('*, authors(name, born_year, died_year, era)')
+          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
           .in('verse_id', verseIds)
           .neq('scope', 'book')
           .order('year_written', { ascending: true }),
-        supabase.from('kanttekeningen').select('*')
+        supabase.from('kanttekeningen')
+          .select('id, verse_id, marker, note_text, note_order')
           .in('verse_id', verseIds).order('note_order', { ascending: true }),
         supabase.from('cross_references')
           .select('id, votes, to_verse_end_id, to_verse:bible_verses!to_verse_id(id, book_id, chapter, verse, text_sv, bible_books(name, abbreviation))')
@@ -593,7 +594,7 @@ export default function Zoeken() {
       ]);
 
       // De-duplicate: prefer verse scope over passage for same author+verse
-      const allComm = (commRes.data || []) as CommentaryWithAuthor[];
+      const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
       const seen = new Map<string, CommentaryWithAuthor>();
       for (const c of allComm) {
         const key = `${c.author_id}-${c.verse_id}`;
@@ -608,7 +609,7 @@ export default function Zoeken() {
       setCommentaries(deduped);
       // Sort kanttekeningen by verse number, then note_order
       const kantData = (kantRes.data || []) as Kanttekening[];
-      const verseNumMap = new Map((vData as BibleVerse[]).map((v) => [v.id, v.verse]));
+      const verseNumMap = new Map((vData as unknown as BibleVerse[]).map((v) => [v.id, v.verse]));
       kantData.sort((a, b) => {
         const va = verseNumMap.get(a.verse_id) || 0;
         const vb = verseNumMap.get(b.verse_id) || 0;

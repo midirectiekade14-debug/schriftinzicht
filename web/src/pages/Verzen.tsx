@@ -80,7 +80,7 @@ export default function Verzen() {
     setError('');
     supabase
       .from('bible_verses')
-      .select('*')
+      .select('id, book_id, chapter, verse, text_sv, text_hsv')
       .eq('book_id', bookId!)
       .eq('chapter', chapterNum)
       .order('verse', { ascending: true })
@@ -146,12 +146,12 @@ export default function Verzen() {
     const [kantRes, commRes, crossRes, sermonRes] = await Promise.all([
       supabase
         .from('kanttekeningen')
-        .select('*')
+        .select('id, verse_id, marker, note_text, note_order')
         .eq('verse_id', verseId)
         .order('note_order', { ascending: true }),
       supabase
         .from('commentaries')
-        .select('*, authors(name, born_year, died_year)')
+        .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year)')
         .eq('verse_id', verseId)
         .neq('scope', 'book')
         .order('year_written', { ascending: true }),
@@ -170,7 +170,7 @@ export default function Verzen() {
 
     setKanttekeningen(kantRes.data || []);
 
-    const allComm = (commRes.data || []) as CommentaryWithAuthor[];
+    const allComm = (commRes.data || []) as unknown as CommentaryWithAuthor[];
     const byAuthor = new Map<string, CommentaryWithAuthor[]>();
     for (const c of allComm) {
       const list = byAuthor.get(c.author_id) || [];
