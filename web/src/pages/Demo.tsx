@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { isNativeWebView } from '../lib/platform';
 
 const ERA_COLORS: Record<string, string> = {
   Reformatie: '#D4A574',
@@ -196,38 +197,42 @@ export default function Demo() {
           })}
         </div>
 
-        <div className="demo-divider" />
+        {!isNativeWebView && (
+          <>
+            <div className="demo-divider" />
 
-        {/* SECTIE 6: PREEKVOORBEREIDING */}
-        <SectionHeader
-          label="PREEKVOORBEREIDING"
-          title="Alle verklaringen bij uw tekst"
-          subtitle="Voer uw preektekst in en ontvang verklaringen, belijdenisverwijzingen en kruisreferenties."
-        />
+            {/* SECTIE 6: PREEKVOORBEREIDING — alleen op desktop */}
+            <SectionHeader
+              label="PREEKVOORBEREIDING"
+              title="Alle verklaringen bij uw tekst"
+              subtitle="Voer uw preektekst in en ontvang verklaringen, belijdenisverwijzingen en kruisreferenties."
+            />
 
-        <div className="demo-preek-card">
-          <div className="demo-preek-verse-block">
-            <span className="demo-preek-ref">Romeinen 8:28-30</span>
-            <p className="demo-preek-verse">En wij weten, dat dengenen, die God liefhebben, alle dingen medewerken ten goede...</p>
-          </div>
-          <div className="demo-preek-tabs">
-            {[{ label: 'Verklaringen', count: 4 }, { label: 'Belijdenissen', count: 3 }, { label: 'Kruisverwijzingen', count: 4 }].map((tab, i) => (
-              <div key={tab.label} className={`demo-preek-tab ${i === 0 ? 'active' : ''}`}>
-                <span>{tab.label}</span>
-                <span className="demo-preek-tab-count">{tab.count}</span>
+            <div className="demo-preek-card">
+              <div className="demo-preek-verse-block">
+                <span className="demo-preek-ref">Romeinen 8:28-30</span>
+                <p className="demo-preek-verse">En wij weten, dat dengenen, die God liefhebben, alle dingen medewerken ten goede...</p>
               </div>
-            ))}
-          </div>
-          {PREEK_COMMENTARIES.map((c, i) => (
-            <div key={i} className="demo-preek-comment" style={{ borderLeftColor: ERA_COLORS[c.era] }}>
-              <div className="demo-preek-comment-head">
-                <span className="demo-preek-comment-author">{c.author}</span>
-                <span className="demo-preek-era-badge" style={{ background: (ERA_COLORS[c.era] || '#C4956A') + '18', color: ERA_COLORS[c.era] }}>{c.era}</span>
+              <div className="demo-preek-tabs">
+                {[{ label: 'Verklaringen', count: 4 }, { label: 'Belijdenissen', count: 3 }, { label: 'Kruisverwijzingen', count: 4 }].map((tab, i) => (
+                  <div key={tab.label} className={`demo-preek-tab ${i === 0 ? 'active' : ''}`}>
+                    <span>{tab.label}</span>
+                    <span className="demo-preek-tab-count">{tab.count}</span>
+                  </div>
+                ))}
               </div>
-              <p className="demo-preek-comment-text">{c.text}</p>
+              {PREEK_COMMENTARIES.map((c) => (
+                <div key={c.author} className="demo-preek-comment" style={{ borderLeftColor: ERA_COLORS[c.era] }}>
+                  <div className="demo-preek-comment-head">
+                    <span className="demo-preek-comment-author">{c.author}</span>
+                    <span className="demo-preek-era-badge" style={{ background: (ERA_COLORS[c.era] || '#C4956A') + '18', color: ERA_COLORS[c.era] }}>{c.era}</span>
+                  </div>
+                  <p className="demo-preek-comment-text">{c.text}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
         <div className="demo-divider" />
 

@@ -5,12 +5,16 @@ The PDFs contained Hebrew with RTL embeddings, but pdftotext produced mojibake.
 Strategy: detect garbled Hebrew sequences and either fix encoding or strip them cleanly.
 """
 
+import os
+import sys
 import requests
 import re
 import time
 
 SUPABASE_URL = "https://mkwqiqssuhunbhvwrsdt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rd3FpcXNzdWh1bmJodndyc2R0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTUxMTE2OCwiZXhwIjoyMDg3MDg3MTY4fQ.GMHtOySld0GM9k93zbqcbMQAW_8hzad9ti-P8VqTjRo"
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+if not SUPABASE_KEY:
+    sys.exit("ERROR: set SUPABASE_SERVICE_ROLE_KEY environment variable")
 
 HEADERS = {
     "apikey": SUPABASE_KEY,

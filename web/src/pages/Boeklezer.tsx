@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { truncate } from '../lib/truncate';
 import { ERA_COLORS } from '../lib/constants';
+import { isNativeWebView } from '../lib/platform';
 
 interface CommentaryEntry {
   id: string;
@@ -306,7 +307,7 @@ export default function Boeklezer() {
   const deepPage = searchParams.get('page');
   const fromSource = searchParams.get('from');
   const fromQuery = searchParams.get('q') || '';
-  const backTarget = fromSource === 'pv'
+  const backTarget = (fromSource === 'pv' && !isNativeWebView)
     ? `/preekvoorbereiding${fromQuery ? `?q=${encodeURIComponent(fromQuery)}` : ''}`
     : '/oudvaders';
 

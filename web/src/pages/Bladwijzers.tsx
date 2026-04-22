@@ -5,6 +5,7 @@ import PremiumGate from '../components/PremiumGate';
 import { truncate } from '../lib/truncate';
 import { displayBookName } from '../lib/parseReference';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { isNativeWebView } from '../lib/platform';
 
 interface PvBookmark {
   ref: string;
@@ -187,7 +188,7 @@ export default function Bladwijzers() {
           </div>
         )}
 
-        {pvBookmarks.length > 0 && (
+        {!isNativeWebView && pvBookmarks.length > 0 && (
           <div className="bw-section">
             <h2 className="bw-section-title">Preekvoorbereiding</h2>
             <div className="bw-list">

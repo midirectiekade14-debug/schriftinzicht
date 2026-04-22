@@ -8,6 +8,7 @@ import AppSidebar from './components/AppSidebar';
 import ErrorBoundary from './components/ErrorBoundary';
 import EditOverlay from './components/EditOverlay';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
+import { isNativeWebView } from './lib/platform';
 
 /* ── Lazy-loaded pages ── */
 const Landing = lazy(() => import('./pages/Landing'));
@@ -28,6 +29,7 @@ const Preekvoorbereiding = lazy(() => import('./pages/Preekvoorbereiding'));
 const Bladwijzers = lazy(() => import('./pages/Bladwijzers'));
 const Leesrooster = lazy(() => import('./pages/Leesrooster'));
 const Admin = lazy(() => import('./pages/Admin'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 /* ── SVG Tab Icons ── */
 const IconZoeken = () => (
@@ -88,12 +90,16 @@ const IconMeer = () => (
   </svg>
 );
 
-const tabs = [
+const baseTabs = [
   { path: '/zoeken', label: 'Zoeken', Icon: IconZoeken },
   { path: '/bijbel', label: 'Bijbel', Icon: IconBijbel },
   { path: '/preekvoorbereiding', label: 'Preek', Icon: IconPreek },
   { path: '/leesrooster', label: 'Leesrooster', Icon: IconLeesrooster },
 ];
+
+const tabs = isNativeWebView
+  ? baseTabs.filter(t => t.path !== '/preekvoorbereiding')
+  : baseTabs;
 
 const moreItems = [
   { path: '/belijdenissen', label: 'Belijdenissen', Icon: IconBelijdenissen },
@@ -165,7 +171,10 @@ function AppShell() {
             <Route path="/bijbel" element={<Bijbel />} />
             <Route path="/bijbel/:bookId" element={<Hoofdstukken />} />
             <Route path="/bijbel/:bookId/:chapter" element={<Verzen />} />
-            <Route path="/preekvoorbereiding" element={<Preekvoorbereiding />} />
+            <Route
+              path="/preekvoorbereiding"
+              element={isNativeWebView ? <Navigate to="/bijbel" replace /> : <Preekvoorbereiding />}
+            />
             <Route path="/belijdenissen" element={<Belijdenissen />} />
             <Route path="/belijdenis/:slug" element={<BelijdenisDetail />} />
             <Route path="/catechismus" element={<Catechismus />} />
@@ -175,7 +184,7 @@ function AppShell() {
             <Route path="/bladwijzers" element={<Bladwijzers />} />
             <Route path="/leesrooster" element={<Leesrooster />} />
             <Route path="/instellingen" element={<Instellingen />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </div>

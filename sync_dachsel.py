@@ -23,7 +23,9 @@ if sys.stdout.encoding != "utf-8":
     sys.stderr.reconfigure(encoding="utf-8")
 
 SUPABASE_URL = "https://mkwqiqssuhunbhvwrsdt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rd3FpcXNzdWh1bmJodndyc2R0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTUxMTE2OCwiZXhwIjoyMDg3MDg3MTY4fQ.GMHtOySld0GM9k93zbqcbMQAW_8hzad9ti-P8VqTjRo"
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+if not SUPABASE_KEY:
+    sys.exit("ERROR: set SUPABASE_SERVICE_ROLE_KEY environment variable")
 AUTHOR_ID = 15
 SOURCE_WORK_ID = 2
 

@@ -1,37 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import useTheme from '../hooks/useTheme';
 import { clickable } from '../lib/a11y';
 
-const THEME_KEY = 'si-theme';
+const FONT_SCALE_KEY = 'si-font-scale';
+const FONT_SCALE_LABELS = ['Normaal', 'Groot', 'Groter', 'Extra groot', 'Maximaal'];
 
 export default function Instellingen() {
   useDocumentTitle('Instellingen');
   const navigate = useNavigate();
   const { user, isLoggedIn } = useAuth();
+  const { isLight, toggle: toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/inloggen', { replace: true });
   };
-  const [light, setLight] = useState(() => {
-    try { return localStorage.getItem(THEME_KEY) === 'light'; }
-    catch { return false; }
+
+  const [fontScaleLevel, setFontScaleLevel] = useState(() => {
+    try {
+      const saved = parseInt(localStorage.getItem(FONT_SCALE_KEY) || '0', 10);
+      return saved >= 0 && saved < FONT_SCALE_LABELS.length ? saved : 0;
+    } catch { return 0; }
   });
 
   useEffect(() => {
-    if (light) {
-      document.documentElement.setAttribute('data-theme', 'light');
-      localStorage.setItem(THEME_KEY, 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem(THEME_KEY, 'dark');
-    }
-  }, [light]);
-
-  const toggleTheme = () => setLight(!light);
+    const onStorage = () => {
+      try {
+        const saved = parseInt(localStorage.getItem(FONT_SCALE_KEY) || '0', 10);
+        if (saved >= 0 && saved < FONT_SCALE_LABELS.length) setFontScaleLevel(saved);
+      } catch { /* noop */ }
+    };
+    window.addEventListener('storage', onStorage);
+    const interval = window.setInterval(onStorage, 1000);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.clearInterval(interval);
+    };
+  }, []);
 
   return (
     <>
@@ -41,13 +50,13 @@ export default function Instellingen() {
       <div className="page">
         <div className="settings-section">
           <h3>Weergave</h3>
-          <div className="setting-row" {...clickable(toggleTheme, { label: `Thema wisselen, nu ${light ? 'licht' : 'donker'}` })} style={{ cursor: 'pointer' }}>
+          <div className="setting-row" {...clickable(toggleTheme, { label: `Thema wisselen, nu ${isLight ? 'licht' : 'donker'}` })} style={{ cursor: 'pointer' }}>
             <span>Thema</span>
-            <span className="setting-value">{light ? 'Licht' : 'Donker'} {light ? '☽' : '☀'}</span>
+            <span className="setting-value">{isLight ? 'Licht' : 'Donker'} {isLight ? '☽' : '☀'}</span>
           </div>
           <div className="setting-row">
             <span>Lettergrootte</span>
-            <span className="setting-value">Normaal</span>
+            <span className="setting-value">{FONT_SCALE_LABELS[fontScaleLevel]}</span>
           </div>
         </div>
 
@@ -97,7 +106,7 @@ export default function Instellingen() {
               <button className="settings-logout" onClick={handleLogout}>Uitloggen</button>
             </>
           ) : (
-            <div className="setting-row" onClick={() => navigate('/inloggen')} style={{ cursor: 'pointer' }}>
+            <div className="setting-row" {...clickable(() => navigate('/inloggen'), { label: 'Ga naar inloggen' })} style={{ cursor: 'pointer' }}>
               <span>Inloggen</span>
               <span className="setting-value">→</span>
             </div>

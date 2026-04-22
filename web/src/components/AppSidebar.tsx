@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { truncate } from '../lib/truncate';
 import { useAuth } from '../hooks/useAuth';
+import { isNativeWebView } from '../lib/platform';
 
 interface PvBookmark { ref: string; query: string; ts: number }
 interface BlBookmark { page: number; label: string; ts: number; authorId?: string; authorName?: string }
@@ -86,7 +87,7 @@ export default function AppSidebar() {
                 }}>{'\u2715'}</button>
               </div>
             ))}
-            {pvBm.slice(0, 8).map((b, i) => (
+            {!isNativeWebView && pvBm.slice(0, 8).map((b, i) => (
               <div key={b.ref} className="as-item-row">
                 <Link to={`/preekvoorbereiding?q=${encodeURIComponent(b.query)}`} className="as-item">
                   {b.ref}
@@ -114,32 +115,34 @@ export default function AppSidebar() {
         )}
       </div>
 
-      {/* Aantekeningen */}
-      <div className="as-section">
-        <div className="as-title">Aantekeningen</div>
-        {noteEntries.length === 0 ? (
-          <div className="as-empty">
-            <span style={{ fontSize: 13 }}>Geen notities</span>
-            <span style={{ fontSize: 12, color: 'var(--text-faint)', display: 'block', marginTop: 4 }}>
-              Selecteer tekst bij de preekvoorbereiding om notities te maken.
-            </span>
-          </div>
-        ) : (
-          noteEntries.slice(0, 8).map(([ref, text]) => (
-            <Link key={ref} to={`/zoeken?q=${encodeURIComponent(ref)}`} className="as-note" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <span className="as-note-ref">{ref}</span>
-              <span className="as-note-preview">{truncate(text, 50)}</span>
-            </Link>
-          ))
-        )}
-      </div>
+      {/* Aantekeningen — alleen op desktop (selectie komt uit preekvoorbereiding) */}
+      {!isNativeWebView && (
+        <div className="as-section">
+          <div className="as-title">Aantekeningen</div>
+          {noteEntries.length === 0 ? (
+            <div className="as-empty">
+              <span style={{ fontSize: 13 }}>Geen notities</span>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)', display: 'block', marginTop: 4 }}>
+                Selecteer tekst bij de preekvoorbereiding om notities te maken.
+              </span>
+            </div>
+          ) : (
+            noteEntries.slice(0, 8).map(([ref, text]) => (
+              <Link key={ref} to={`/zoeken?q=${encodeURIComponent(ref)}`} className="as-note" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <span className="as-note-ref">{ref}</span>
+                <span className="as-note-preview">{truncate(text, 50)}</span>
+              </Link>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Zoekgeschiedenis */}
       {searchHistory.length > 0 && (
         <div className="as-section">
           <div className="as-title">Zoekgeschiedenis</div>
-          {searchHistory.slice(0, 8).map((q, i) => (
-            <Link key={i} to={`/zoeken?q=${encodeURIComponent(q)}`} className="as-item">
+          {searchHistory.slice(0, 8).map((q) => (
+            <Link key={q} to={`/zoeken?q=${encodeURIComponent(q)}`} className="as-item">
               {q}
             </Link>
           ))}
@@ -150,13 +153,13 @@ export default function AppSidebar() {
       {history.length > 0 && (
         <div className="as-section">
           <div className="as-title">Recent gelezen</div>
-          {history.slice(0, 6).map((h, i) => (
-            <div key={i} className="as-item-row">
+          {history.slice(0, 6).map((h) => (
+            <div key={h.authorId} className="as-item-row">
               <Link to={`/boeklezer/${h.authorId}`} className="as-item">
                 {h.name}
               </Link>
               <button className="as-rm" onClick={() => {
-                const updated = history.filter((_, j) => j !== i);
+                const updated = history.filter(x => x.authorId !== h.authorId);
                 setHistory(updated);
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
               }}>{'\u2715'}</button>
