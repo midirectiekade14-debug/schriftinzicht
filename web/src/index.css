@@ -3851,19 +3851,19 @@ a.preek-badge:hover {
   pointer-events: none;
 }
 
-.bl-turn-right { animation: bl-page-turn-right 0.28s ease; }
-.bl-turn-left { animation: bl-page-turn-left 0.28s ease; }
+.bl-turn-right { animation: bl-page-turn-right 0.5s cubic-bezier(0.4, 0.0, 0.2, 1); transform-origin: left center; }
+.bl-turn-left { animation: bl-page-turn-left 0.5s cubic-bezier(0.4, 0.0, 0.2, 1); transform-origin: right center; }
 
 @keyframes bl-page-turn-right {
-  0% { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
-  50% { transform: perspective(1200px) rotateY(-6deg); opacity: 0.7; }
-  100% { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
+  0%   { transform: perspective(1600px) rotateY(0deg);   opacity: 1;   box-shadow: none; }
+  50%  { transform: perspective(1600px) rotateY(-18deg); opacity: 0.35; box-shadow: -12px 0 24px rgba(0,0,0,0.18); }
+  100% { transform: perspective(1600px) rotateY(0deg);   opacity: 1;   box-shadow: none; }
 }
 
 @keyframes bl-page-turn-left {
-  0% { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
-  50% { transform: perspective(1200px) rotateY(6deg); opacity: 0.7; }
-  100% { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
+  0%   { transform: perspective(1600px) rotateY(0deg);   opacity: 1;   box-shadow: none; }
+  50%  { transform: perspective(1600px) rotateY(18deg);  opacity: 0.35; box-shadow: 12px 0 24px rgba(0,0,0,0.18); }
+  100% { transform: perspective(1600px) rotateY(0deg);   opacity: 1;   box-shadow: none; }
 }
 
 /* ── Page header ────────────────────────────────────────── */

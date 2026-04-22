@@ -638,9 +638,11 @@ export default function Boeklezer() {
     setTurning(dir);
     setTimeout(() => {
       setCurrentPage(page);
-      setTurning(null);
       pageRef.current?.scrollTo({ top: 0, behavior: 'instant' });
-    }, 280);
+    }, 250);
+    setTimeout(() => {
+      setTurning(null);
+    }, 500);
   }, [currentPage, totalPages]);
 
   const prevPage = useCallback(() => goToPage(currentPage - 1, 'left'), [currentPage, goToPage]);
