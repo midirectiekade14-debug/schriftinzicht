@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { BibleVerse, Kanttekening } from '../types/database';
 import { truncate } from '../lib/truncate';
@@ -73,6 +73,16 @@ export default function Verzen() {
   const [bookmarks, setBookmarks] = useState<BijbelBookmark[]>(loadBookmarks);
   const [detailBookmarks, setDetailBookmarks] = useState<DetailBookmark[]>(loadDetailBookmarks);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [flipOut, setFlipOut] = useState<'right' | 'left' | null>(null);
+  const incomingDir = (location.state as { fromTurn?: 'right' | 'left' } | null)?.fromTurn ?? null;
+  const [flipIn, setFlipIn] = useState<'right' | 'left' | null>(incomingDir);
+
+  useEffect(() => {
+    if (!flipIn) return;
+    const t = setTimeout(() => setFlipIn(null), 450);
+    return () => clearTimeout(t);
+  }, [flipIn]);
 
   const chapterNum = parseInt(chapter!, 10);
 
@@ -234,7 +244,11 @@ export default function Verzen() {
   };
 
   const goChapter = (ch: number) => {
-    navigate(`/bijbel/${bookId}/${ch}?name=${encodeURIComponent(bookName)}`);
+    const dir: 'right' | 'left' = ch > chapterNum ? 'right' : 'left';
+    setFlipOut(dir);
+    setTimeout(() => {
+      navigate(`/bijbel/${bookId}/${ch}?name=${encodeURIComponent(bookName)}`, { state: { fromTurn: dir } });
+    }, 450);
   };
 
   const isBookmarked = bookmarks.some(b => b.bookId === bookId && b.chapter === chapterNum);
@@ -297,7 +311,7 @@ export default function Verzen() {
       </div>
       <div className="page">
         {/* Parchment-style book page */}
-        <div className="bijbel-page">
+        <div className={`bijbel-page bijbel-page-flipwrap${flipOut === 'right' ? ' bijbel-flip-out-right' : ''}${flipOut === 'left' ? ' bijbel-flip-out-left' : ''}${flipIn === 'right' ? ' bijbel-flip-in-right' : ''}${flipIn === 'left' ? ' bijbel-flip-in-left' : ''}`}>
           {/* Page header */}
           <div className="bl-page-head">
             <span className="bl-head-rule" />
