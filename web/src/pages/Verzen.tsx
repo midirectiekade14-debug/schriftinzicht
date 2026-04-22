@@ -73,16 +73,41 @@ export default function Verzen() {
   const [bookmarks, setBookmarks] = useState<BijbelBookmark[]>(loadBookmarks);
   const [detailBookmarks, setDetailBookmarks] = useState<DetailBookmark[]>(loadDetailBookmarks);
   const navigate = useNavigate();
-  const location = useLocation();
-  const [flipOut, setFlipOut] = useState<'right' | 'left' | null>(null);
-  const incomingDir = (location.state as { fromTurn?: 'right' | 'left' } | null)?.fromTurn ?? null;
-  const [flipIn, setFlipIn] = useState<'right' | 'left' | null>(incomingDir);
+  useLocation();
+  const [flipOverlay, setFlipOverlay] = useState<{ dir: 'right' | 'left'; targetCh: number } | null>(null);
 
-  useEffect(() => {
-    if (!flipIn) return;
-    const t = setTimeout(() => setFlipIn(null), 450);
-    return () => clearTimeout(t);
-  }, [flipIn]);
+  const playPageTurnSound = useCallback(() => {
+    try {
+      const AC: typeof AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AC();
+      const durSec = 0.55;
+      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * durSec), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        const t = i / data.length;
+        const env = Math.pow(Math.sin(Math.PI * t), 1.3) * (1 - t * 0.2);
+        const noise = Math.random() * 2 - 1;
+        const crackle = Math.random() < 0.005 ? (Math.random() * 2 - 1) * 2 : 0;
+        data[i] = (noise + crackle) * env * 0.35;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 2400;
+      bp.Q.value = 0.9;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 800;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.5;
+      src.connect(hp).connect(bp).connect(gain).connect(ctx.destination);
+      src.start();
+      src.onended = () => ctx.close();
+    } catch {
+      /* audio not supported */
+    }
+  }, []);
 
   const chapterNum = parseInt(chapter!, 10);
 
@@ -243,13 +268,35 @@ export default function Verzen() {
     setExpandedCommentary((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const goChapter = (ch: number) => {
+  const goChapter = useCallback((ch: number) => {
+    if (flipOverlay) return;
+    if (ch < 1 || (chapterCount > 0 && ch > chapterCount)) return;
     const dir: 'right' | 'left' = ch > chapterNum ? 'right' : 'left';
-    setFlipOut(dir);
+    playPageTurnSound();
+    setFlipOverlay({ dir, targetCh: ch });
     setTimeout(() => {
-      navigate(`/bijbel/${bookId}/${ch}?name=${encodeURIComponent(bookName)}`, { state: { fromTurn: dir } });
-    }, 450);
-  };
+      navigate(`/bijbel/${bookId}/${ch}?name=${encodeURIComponent(bookName)}`);
+      setFlipOverlay(null);
+    }, 800);
+  }, [flipOverlay, chapterNum, chapterCount, bookId, bookName, navigate, playPageTurnSound]);
+
+  // Keyboard navigation (pijltoetsen)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'ArrowRight' && chapterNum < chapterCount) {
+        e.preventDefault();
+        goChapter(chapterNum + 1);
+      } else if (e.key === 'ArrowLeft' && chapterNum > 1) {
+        e.preventDefault();
+        goChapter(chapterNum - 1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [chapterNum, chapterCount, goChapter]);
 
   const isBookmarked = bookmarks.some(b => b.bookId === bookId && b.chapter === chapterNum);
 
@@ -311,7 +358,7 @@ export default function Verzen() {
       </div>
       <div className="page">
         {/* Parchment-style book page */}
-        <div className={`bijbel-page bijbel-page-flipwrap${flipOut === 'right' ? ' bijbel-flip-out-right' : ''}${flipOut === 'left' ? ' bijbel-flip-out-left' : ''}${flipIn === 'right' ? ' bijbel-flip-in-right' : ''}${flipIn === 'left' ? ' bijbel-flip-in-left' : ''}`}>
+        <div className="bijbel-page">
           {/* Page header */}
           <div className="bl-page-head">
             <span className="bl-head-rule" />
@@ -542,6 +589,18 @@ export default function Verzen() {
           </div>
         </div>
         <SelectionPopup verseRef={`${bookName} ${chapter}`} />
+        {flipOverlay && (
+          <div className="page-flipper-overlay" aria-hidden="true">
+            <div className={`page-flipper-card page-flipper-card-${flipOverlay.dir}`}>
+              <div className="page-flipper-face page-flipper-front">
+                <span className="page-flipper-chapter">{bookName} {chapterNum}</span>
+              </div>
+              <div className="page-flipper-face page-flipper-back">
+                <span className="page-flipper-chapter">{bookName} {flipOverlay.targetCh}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
