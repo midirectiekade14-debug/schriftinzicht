@@ -116,6 +116,46 @@ interface DailyVerse {
   fullCommentary: string;
 }
 
+/** Extract the portion of a commentary text that covers [startV..endV].
+ *  Old-Dutch commentaries often group verses under headers like "Vs. 1",
+ *  "Vs. 2-5", or plain "1. ...". Sections spanning the whole chapter
+ *  (e.g. "Vs. 1-23") are treated as intro summaries and skipped. */
+function extractVerseRange(text: string, startV: number, endV: number): string {
+  if (!text) return '';
+  const paragraphs = text.split(/\n+/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length === 0) return text;
+
+  const verseMarkerRe = /^(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–\-]\s*(\d+))?[.\s:,]/i;
+  const verseStartRe = /^(\d+)[.\s]/;
+  const result: string[] = [];
+  let inRange = false;
+  let foundAnyMarker = false;
+
+  for (const para of paragraphs) {
+    const m1 = para.match(verseMarkerRe);
+    const m2 = !m1 ? para.match(verseStartRe) : null;
+    const m = m1 || m2;
+    if (m) {
+      foundAnyMarker = true;
+      const s = parseInt(m[1], 10);
+      const e = m[2] ? parseInt(m[2], 10) : s;
+      if (s > endV) break;
+      if (s >= startV && e <= endV) {
+        inRange = true;
+        result.push(para);
+      } else {
+        inRange = false;
+      }
+    } else if (inRange || !foundAnyMarker) {
+      result.push(para);
+    }
+  }
+
+  const joined = result.join('\n\n').trim();
+  if (joined.length < 40) return text;
+  return joined;
+}
+
 const DAILY_CACHE_KEY = 'si-daily-verse';
 
 function getCachedDaily(): DailyVerse | null {
@@ -184,7 +224,8 @@ function useDailyVerse() {
       const startV = contextVerses?.length ? contextVerses[0].verse : v.verse;
       const endV = contextVerses?.length ? contextVerses[contextVerses.length - 1].verse : v.verse;
       const refStr = startV === endV ? `${bookName} ${v.chapter}:${v.verse}` : `${bookName} ${v.chapter}:${startV}\u2013${endV}`;
-      const fullText = (pick.commentary_text || '').trim();
+      const rawText = (pick.commentary_text || '').trim();
+      const fullText = extractVerseRange(rawText, startV, endV);
       const result: DailyVerse = {
         ref: refStr,
         text: combinedText,

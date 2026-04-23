@@ -488,8 +488,13 @@ select:focus-visible {
 
 .comm-verse-heading {
   padding-bottom: var(--sp-xs);
+  margin-top: var(--sp-md);
   margin-bottom: var(--sp-sm);
   border-bottom: 1px solid var(--divider);
+}
+.comm-verse-group:first-of-type > .comm-verse-heading:first-child,
+.kant-verse-group:first-of-type > .comm-verse-heading:first-child {
+  margin-top: 0;
 }
 
 .comm-verse-ref {
@@ -528,11 +533,16 @@ select:focus-visible {
 }
 
 .commentary-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr minmax(3.5em, auto) auto;
   align-items: center;
   gap: var(--sp-sm);
   margin-bottom: var(--sp-sm);
 }
+.commentary-header > .author-name { grid-column: 1; }
+.commentary-header > .author-years { grid-column: 2; }
+.commentary-header > .year-badge { grid-column: 4; justify-self: end; }
+.commentary-header > .detail-bm-btn { grid-column: 5; }
 
 .author-name {
   font-size: 14px;
@@ -554,7 +564,6 @@ select:focus-visible {
   border: 1px solid rgba(196,149,106,0.12);
   padding: 2px var(--sp-sm);
   border-radius: 6px;
-  margin-left: auto;
   font-family: var(--font-sans);
   font-weight: 500;
 }
@@ -5346,12 +5355,13 @@ a.pv-kant-verse:hover {
 /* ── App Sidebar (breed scherm) ── */
 .app-sidebar {
   display: none;
-  width: 220px;
+  width: 260px;
   flex-shrink: 0;
   padding: var(--sp-md) var(--sp-sm);
   overflow-y: auto;
   border-right: 1px solid var(--surface-border);
   background: rgba(12,10,9,0.5);
+  zoom: var(--font-scale);
 }
 @media (min-width: 960px) {
   .app-sidebar { display: block; }
