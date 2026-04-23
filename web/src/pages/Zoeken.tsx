@@ -125,7 +125,8 @@ function extractVerseRange(text: string, startV: number, endV: number): string {
   const paragraphs = text.split(/\n+/).map(p => p.trim()).filter(Boolean);
   if (paragraphs.length === 0) return text;
 
-  const verseMarkerRe = /^(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–\-]\s*(\d+))?[.\s:,]/i;
+  // Matcht: "Vs. 1", "Vers 1", "Vs. 2-5", "IV. Vs. 1-23" (Romeinse hoofdstuk-prefix optioneel)
+  const verseMarkerRe = /^(?:[IVXLC]+\.\s*)?(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–\-]\s*(\d+))?[.\s:,]/i;
   const verseStartRe = /^(\d+)[.\s]/;
   const result: string[] = [];
   let inRange = false;
@@ -156,7 +157,7 @@ function extractVerseRange(text: string, startV: number, endV: number): string {
   return joined;
 }
 
-const DAILY_CACHE_KEY = 'si-daily-verse';
+const DAILY_CACHE_KEY = 'si-daily-verse-v2';
 
 function getCachedDaily(): DailyVerse | null {
   try {
