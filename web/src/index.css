@@ -4713,7 +4713,7 @@ a.preek-badge:hover {
 
 .pv-author-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--sp-sm);
   margin-bottom: var(--sp-sm);
   padding-bottom: var(--sp-xs);
@@ -4945,11 +4945,89 @@ a.pv-kant-verse:hover {
 
 .pv-sermon-meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--sp-sm);
   margin-bottom: var(--sp-sm);
   flex-wrap: wrap;
 }
+
+.pv-author-portrait {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--accent, #C4956A);
+  flex-shrink: 0;
+  background: var(--surface-2, #f5ecd6);
+}
+
+/* ── VersePopup: bijbeltekst-preview popup ─────────────────── */
+.verse-popup {
+  z-index: 1100;
+  background: var(--surface, #fff);
+  color: var(--text, #222);
+  border: 1px solid var(--border, rgba(139,69,19,0.2));
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: verse-popup-in 0.15s ease-out;
+}
+@keyframes verse-popup-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.verse-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 8px 12px;
+  background: var(--surface-2, #f5ecd6);
+  border-bottom: 1px solid var(--border, rgba(139,69,19,0.2));
+}
+.verse-popup-ref {
+  font-weight: 600;
+  color: var(--accent-strong, #8B5A2B);
+  font-size: 14px;
+}
+.verse-popup-close {
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted, #777);
+  padding: 0 4px;
+  border-radius: 4px;
+}
+.verse-popup-close:hover { color: var(--text, #222); background: rgba(0,0,0,0.05); }
+.verse-popup-body {
+  padding: 10px 14px;
+  overflow-y: auto;
+  font-family: var(--font-serif, 'Georgia', serif);
+  line-height: 1.55;
+  font-size: 15px;
+}
+.verse-popup-text sup.bijbel-vnum {
+  color: var(--accent-strong, #8B5A2B);
+  font-weight: 600;
+  margin-right: 2px;
+}
+.verse-popup-foot {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border, rgba(139,69,19,0.15));
+  text-align: right;
+  background: var(--surface-2, #f9f4e7);
+}
+.verse-popup-link {
+  color: var(--accent-strong, #8B5A2B);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+.verse-popup-link:hover { text-decoration: underline; }
 
 .pv-sermon-source {
   font-size: 13px;

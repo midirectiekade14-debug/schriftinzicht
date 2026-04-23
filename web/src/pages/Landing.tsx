@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -9,17 +9,9 @@ interface Stats {
   kanttekeningen: number;
 }
 
-const themeChips = [
-  { label: 'Genade', q: 'genade' },
-  { label: 'Geloof', q: 'geloof' },
-  { label: 'Verkiezing', q: 'verkiezing' },
-  { label: 'Troost', q: 'troost' },
-];
-
 export default function Landing() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [query, setQuery] = useState('');
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
@@ -53,13 +45,6 @@ export default function Landing() {
     fetchStats();
   }, []);
 
-  function handleSearch(e: FormEvent) {
-    e.preventDefault();
-    if (query.trim()) {
-      navigate(`/zoeken?q=${encodeURIComponent(query.trim())}`);
-    }
-  }
-
   return (
     <div className="landing landing-page">
       <div className="landing-glow" />
@@ -91,14 +76,15 @@ export default function Landing() {
                 <stop offset="0%" stopColor="#C4956A" stopOpacity={0.22} />
                 <stop offset="100%" stopColor="#8B6840" stopOpacity={0.06} />
               </linearGradient>
-              <radialGradient id="glow" cx="0.5" cy="0.35" r="0.5">
-                <stop offset="0%" stopColor="#C4956A" stopOpacity={0.08} />
+              <radialGradient id="glow" cx="0.5" cy="0.5" r="0.75">
+                <stop offset="0%" stopColor="#C4956A" stopOpacity={0.1} />
+                <stop offset="65%" stopColor="#C4956A" stopOpacity={0.04} />
                 <stop offset="100%" stopColor="#C4956A" stopOpacity={0} />
               </radialGradient>
             </defs>
 
-            {/* Achtergrond glow */}
-            <rect width="500" height="500" fill="url(#glow)" />
+            {/* Achtergrond glow — overschrijdt canvas bewust aan top zodat het niet plotseling wegvalt */}
+            <rect x="-100" y="-120" width="700" height="740" fill="url(#glow)" />
 
             {/* Kruis */}
             <g transform="translate(250, 155)">
@@ -147,34 +133,8 @@ export default function Landing() {
         </p>
       </div>
 
-      {/* Search + actions section */}
+      {/* CTA */}
       <div className={`landing-actions ${step >= 5 ? 'landing-visible' : ''}`}>
-        <form className="landing-search" onSubmit={handleSearch}>
-          <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="9" r="6" /><line x1="13.5" y1="13.5" x2="17" y2="17" />
-          </svg>
-          <input
-            type="text"
-            className="landing-search-input"
-            placeholder="Zoek in bijbelverklaringen..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoComplete="off"
-          />
-        </form>
-
-        <div className="landing-chips">
-          {themeChips.map((chip) => (
-            <button
-              key={chip.q}
-              className="landing-chip"
-              onClick={() => navigate(`/zoeken?q=${encodeURIComponent(chip.q)}`)}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-
         <button className="landing-cta" onClick={() => navigate('/zoeken')}>
           Begin met ontdekken
         </button>

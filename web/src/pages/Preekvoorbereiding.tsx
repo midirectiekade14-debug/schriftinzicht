@@ -19,7 +19,7 @@ interface CrossRefRow {
 interface SermonRow {
   id: string; title: string; sermon_text: string; source_collection: string | null;
   year_preached: number | null; language: string;
-  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
+  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null; portrait_url: string | null } | null;
 }
 interface CatechismLink {
   question_number: number;
@@ -237,7 +237,7 @@ export default function Preekvoorbereiding() {
       };
       const [commRes, kantRes, crossRes, sermonRes, catRes] = await Promise.all([
         supabase.from('commentaries')
-          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
+          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era, portrait_url)')
           .in('verse_id', verseIds)
           .neq('scope', 'book')
           .order('year_written', { ascending: true }),
@@ -251,7 +251,7 @@ export default function Preekvoorbereiding() {
         // (we filter client-side for overlap with selected range)
         chapterVerseIds.length > 0
           ? supabase.from('sermons')
-              .select('id, title, sermon_text, source_collection, year_preached, language, start_verse_id, end_verse_id, authors(name, born_year, died_year, era)')
+              .select('id, title, sermon_text, source_collection, year_preached, language, start_verse_id, end_verse_id, authors(name, born_year, died_year, era, portrait_url)')
               .in('start_verse_id', chapterVerseIds)
               .order('year_preached', { ascending: true })
               .limit(50)
@@ -562,9 +562,13 @@ export default function Preekvoorbereiding() {
                         {Array.from(authors.entries()).map(([authorName, comms]) => {
                           const auth = comms[0].authors;
                           const years = auth?.born_year ? `${auth.born_year}\u2013${auth.died_year || '?'}` : '';
+                          const portrait = auth?.portrait_url || null;
                           return (
                             <div key={authorName} className="pv-author-group">
                               <div className="pv-author-header">
+                                {portrait && (
+                                  <img src={portrait} alt="" className="pv-author-portrait" loading="lazy" />
+                                )}
                                 <span className="author-name">{authorName}</span>
                                 {years && <span className="author-years">{years}</span>}
                               </div>
@@ -636,6 +640,7 @@ export default function Preekvoorbereiding() {
                     const preview = truncate(text, 400);
                     const authorName = s.authors?.name || 'Onbekend';
                     const years = s.authors?.born_year ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
+                    const portrait = s.authors?.portrait_url || null;
                     return (
                       <div key={s.id} className="pv-sermon-card" {...clickable(() => setExpandedSermon(prev => ({ ...prev, [s.id]: !prev[s.id] })), { expanded: isOpen, label: `Preek van ${authorName} uitklappen` })}>
                         <div className="pv-sermon-header">
@@ -643,6 +648,9 @@ export default function Preekvoorbereiding() {
                           {s.year_preached && <span className="year-badge">{s.year_preached}</span>}
                         </div>
                         <div className="pv-sermon-meta">
+                          {portrait && (
+                            <img src={portrait} alt="" className="pv-author-portrait" loading="lazy" />
+                          )}
                           <span className="author-name">{authorName}</span>
                           {years && <span className="author-years">{years}</span>}
                           {s.source_collection && <span className="pv-sermon-source">{s.source_collection}</span>}

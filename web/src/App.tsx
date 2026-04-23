@@ -44,13 +44,14 @@ const IconBijbel = () => (
   </svg>
 );
 const IconPreek = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-    {/* Ganzeveer — duidelijk herkenbaar */}
-    <path d="M15.5 1.5C13 3 9.5 7.5 8 11C7 13.5 6.5 16 7 17.5C7.3 18.3 8 18.5 8.8 18C9.8 17.3 10.5 15 11 13" />
-    <path d="M15.5 1.5C17 1.5 17.5 3 17 4.5C16.3 6.5 14 9 12 10.5" />
-    <path d="M8 11L4 12" />
-    <line x1="4" y1="12" x2="3.5" y2="17.5" strokeWidth="1" />
-    <path d="M15.5 1.5L17.5 1" strokeWidth="0.8" />
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    {/* Preekstoel / kansel met geopend boek bovenop */}
+    <path d="M4 17H16" />
+    <path d="M6 17V11C6 9.3 7.5 8 10 8C12.5 8 14 9.3 14 11V17" />
+    <path d="M6 11H14" />
+    <path d="M7.5 4.5C8.5 4 9.2 4 10 4C10.8 4 11.5 4 12.5 4.5" />
+    <path d="M7.5 4.5V7.5C8.5 7 9.2 7 10 7C10.8 7 11.5 7 12.5 7.5V4.5" />
+    <line x1="10" y1="4.2" x2="10" y2="7.2" />
   </svg>
 );
 const IconBelijdenissen = () => (
@@ -93,7 +94,7 @@ const IconMeer = () => (
 const baseTabs = [
   { path: '/zoeken', label: 'Zoeken', Icon: IconZoeken },
   { path: '/bijbel', label: 'Bijbel', Icon: IconBijbel },
-  { path: '/preekvoorbereiding', label: 'Preek', Icon: IconPreek },
+  { path: '/preekvoorbereiding', label: 'Preekvoorbereiding', Icon: IconPreek },
   { path: '/leesrooster', label: 'Leesrooster', Icon: IconLeesrooster },
 ];
 

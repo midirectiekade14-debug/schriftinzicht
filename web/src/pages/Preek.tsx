@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { displayBookName } from '../lib/parseReference';
+import VersePopup from '../components/VersePopup';
 
 interface SermonDetail {
   id: string;
@@ -40,6 +41,17 @@ function cleanTitle(t: string): string {
   return s;
 }
 
+/** True als de "titel" in werkelijkheid de eerste zin van de preek is (slechte data). */
+function looksLikeSentence(t: string): boolean {
+  if (!t) return true;
+  const s = t.trim();
+  if (s.length > 80) return true;
+  if (/: [a-z]/.test(s)) return true;
+  if ((s.match(/\./g) || []).length >= 2) return true;
+  if (/[,;]$/.test(s)) return true;
+  return false;
+}
+
 export default function Preek() {
   const { id } = useParams();
   const [sermon, setSermon] = useState<SermonDetail | null>(null);
@@ -48,6 +60,7 @@ export default function Preek() {
   const [prevSermon, setPrevSermon] = useState<SiblingSermon | null>(null);
   const [nextSermon, setNextSermon] = useState<SiblingSermon | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const [versePopup, setVersePopup] = useState<{ book: string; chapter: number; verseStart: number; verseEnd?: number; rect: DOMRect } | null>(null);
   const [prevId, setPrevId] = useState(id);
   if (prevId !== id) {
     setPrevId(id);
@@ -151,9 +164,14 @@ export default function Preek() {
   const verseRef = sermon.start_verse
     ? `${displayBookName(verseBookName)} ${sermon.start_verse.chapter}:${sermon.start_verse.verse}`
     : '';
-  const verseLink = sermon.start_verse
-    ? `/bijbel/${sermon.start_verse.book_id}/${sermon.start_verse.chapter}?name=${encodeURIComponent(verseBookName)}`
-    : '';
+  const verseData = sermon.start_verse
+    ? { book: verseBookName, chapter: sermon.start_verse.chapter, verseStart: sermon.start_verse.verse }
+    : null;
+  const openVersePopup = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!verseData) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setVersePopup({ ...verseData, rect });
+  };
   const bookTitle = sermon.source_collection || cleanTitle(sermon.title);
   const isCover = currentPage === 0;
   const textPageIndex = currentPage - 1;
@@ -183,7 +201,7 @@ export default function Preek() {
               <h2 className="preek-cover-author">{authorName}</h2>
               {years && <span className="preek-cover-years">{years}</span>}
               {verseRef && (
-                <Link to={verseLink} className="preek-cover-verse">{verseRef}</Link>
+                <button type="button" className="preek-cover-verse" onClick={openVersePopup}>{verseRef}</button>
               )}
               <div className="preek-cover-ornament">{'\u2767'}</div>
             </div>
@@ -197,16 +215,19 @@ export default function Preek() {
               </div>
 
               {/* Title only on first text page */}
-              {textPageIndex === 0 && (
-                <div className="preek-header">
-                  <h2 className="preek-title">{cleanTitle(sermon.title)}</h2>
-                  <div className="preek-meta">
-                    {years && <span className="preek-years">{years}</span>}
-                    {verseRef && <Link to={verseLink} className="preek-badge">{verseRef}</Link>}
-                    {sermon.source_collection && <span className="preek-badge">{sermon.source_collection}</span>}
+              {textPageIndex === 0 && (() => {
+                const displayTitle = looksLikeSentence(sermon.title) ? null : cleanTitle(sermon.title);
+                return (
+                  <div className="preek-header">
+                    {displayTitle && <h2 className="preek-title">{displayTitle}</h2>}
+                    <div className="preek-meta">
+                      {years && <span className="preek-years">{years}</span>}
+                      {verseRef && <button type="button" className="preek-badge" onClick={openVersePopup}>{verseRef}</button>}
+                      {sermon.source_collection && <span className="preek-badge">{sermon.source_collection}</span>}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Content */}
               <div className="bijbel-text">
@@ -254,6 +275,16 @@ export default function Preek() {
             </div>
           )}
         </div>
+        {versePopup && (
+          <VersePopup
+            book={versePopup.book}
+            chapter={versePopup.chapter}
+            verseStart={versePopup.verseStart}
+            verseEnd={versePopup.verseEnd}
+            anchorRect={versePopup.rect}
+            onClose={() => setVersePopup(null)}
+          />
+        )}
       </div>
     </>
   );
