@@ -76,39 +76,6 @@ export default function Verzen() {
   useLocation();
   const [flipOverlay, setFlipOverlay] = useState<{ dir: 'right' | 'left'; targetCh: number } | null>(null);
 
-  const playPageTurnSound = useCallback(() => {
-    try {
-      const AC: typeof AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AC();
-      const durSec = 0.55;
-      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * durSec), ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i++) {
-        const t = i / data.length;
-        const env = Math.pow(Math.sin(Math.PI * t), 1.3) * (1 - t * 0.2);
-        const noise = Math.random() * 2 - 1;
-        const crackle = Math.random() < 0.005 ? (Math.random() * 2 - 1) * 2 : 0;
-        data[i] = (noise + crackle) * env * 0.35;
-      }
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 2400;
-      bp.Q.value = 0.9;
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 800;
-      const gain = ctx.createGain();
-      gain.gain.value = 0.5;
-      src.connect(hp).connect(bp).connect(gain).connect(ctx.destination);
-      src.start();
-      src.onended = () => ctx.close();
-    } catch {
-      /* audio not supported */
-    }
-  }, []);
-
   const chapterNum = parseInt(chapter!, 10);
 
   interface VerseDetailCache {
@@ -272,13 +239,12 @@ export default function Verzen() {
     if (flipOverlay) return;
     if (ch < 1 || (chapterCount > 0 && ch > chapterCount)) return;
     const dir: 'right' | 'left' = ch > chapterNum ? 'right' : 'left';
-    playPageTurnSound();
     setFlipOverlay({ dir, targetCh: ch });
     setTimeout(() => {
       navigate(`/bijbel/${bookId}/${ch}?name=${encodeURIComponent(bookName)}`);
       setFlipOverlay(null);
     }, 800);
-  }, [flipOverlay, chapterNum, chapterCount, bookId, bookName, navigate, playPageTurnSound]);
+  }, [flipOverlay, chapterNum, chapterCount, bookId, bookName, navigate]);
 
   // Keyboard navigation (pijltoetsen)
   useEffect(() => {
