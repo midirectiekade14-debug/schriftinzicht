@@ -49,7 +49,7 @@ web/src/lib/normalizeBibleRefs.ts               ← bron-van-waarheid (nieuw)
 | Component | Pad | Rol |
 |---|---|---|
 | TS normalize | `web/src/lib/normalizeBibleRefs.ts` | Geport uit SQL, ~100 regex-patronen, signature `(input: string) => string` |
-| Eval-set | `web/evals/normalizeBibleRefs/eval-set-v1.json` | 100 items: `{input, expected: {book, chapter, verse}}` |
+| Eval-set | `web/evals/normalizeBibleRefs/eval-set-v1.json` | 100 items: `{input, expected: BibleRef \| BibleRef[]}` |
 | Runner | `web/evals/normalizeBibleRefs/run.mjs` | Node 25.6+ TS-stripping; draait `parseReference(normalize(item.input))` vergelijkt met expected |
 | Verify | `web/evals/normalizeBibleRefs/verify.sh` | Bare-number score (autoresearch Verify-veld) |
 | Guard | `web/evals/normalizeBibleRefs/guard.sh` | Draait `parseReference` eval-set; exit 1 als score < 100% (autoresearch Guard) |
@@ -61,17 +61,18 @@ web/src/lib/normalizeBibleRefs.ts               ← bron-van-waarheid (nieuw)
 Per eval-item:
 
 ```
-type Ref = { book: string, chapter: number, verse?: number }
+type BibleRef = { book: string, chapter: number, verseStart: number, verseEnd: number }
+// book = canonical DB name (bv. "Jesaja", "1 Korinthiërs"); verseEnd == verseStart voor single-verse
 
 item = {
   input: string,
-  expected: Ref | Ref[]    // array voor multi-ref inputs (bv. "Rom. 8:1, 3")
+  expected: BibleRef | BibleRef[]    // array voor multi-ref inputs (bv. "Rom. 8:1, 3")
 }
 
 pipeline:
   normalized   = normalizeBibleRefs(item.input)
-  parsed       = parseReference(normalized)      // bestaand contract: Ref | Ref[]
-  pass         = set_equal(parsed, item.expected)  // volgorde-onafhankelijk voor arrays
+  parsed       = parseReference(normalized)         // bestaand contract
+  pass         = set_equal(parsed, item.expected)   // volgorde-onafhankelijk bij arrays
 
 score = (#passes / #items) × 100
 ```
