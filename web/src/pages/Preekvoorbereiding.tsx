@@ -181,11 +181,18 @@ export default function Preekvoorbereiding() {
     setStorage(BOOKMARKS_KEY, updated);
   };
 
-  const buildReturnState = () => ({
-    returnTo: location.pathname + location.search,
-    returnLabel: 'Preekvoorbereiding',
-    returnScrollY: window.scrollY,
-  });
+  const goToBible = (href: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.stopPropagation();
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    navigate(href, {
+      state: {
+        returnTo: location.pathname + location.search,
+        returnLabel: 'Preekvoorbereiding',
+        returnScrollY: window.scrollY,
+      },
+    });
+  };
 
   // Autocomplete
   const suggestions = query.trim() ? getSuggestions(query, 5) : [];
@@ -605,14 +612,16 @@ export default function Preekvoorbereiding() {
                                 return (
                                   <div key={c.id} className="pv-comm-card" {...clickable(() => setExpandedComm(prev => ({ ...prev, [c.id]: !prev[c.id] })), { expanded: isOpen, label: `Verklaring van ${authorName} uitklappen` })}>
                                     <div className="pv-comm-top">
-                                      {vLabel && v && (
-                                        <Link
-                                          to={`/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`}
-                                          className="pv-comm-verse-label"
-                                          onClick={e => e.stopPropagation()}
-                                          state={buildReturnState()}
-                                        >{vLabel}</Link>
-                                      )}
+                                      {vLabel && v && (() => {
+                                        const href = `/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`;
+                                        return (
+                                          <Link
+                                            to={href}
+                                            className="pv-comm-verse-label"
+                                            onClick={goToBible(href)}
+                                          >{vLabel}</Link>
+                                        );
+                                      })()}
                                       <button
                                         className={`detail-bm-btn ${detailBookmarks.some(b => b.id === c.id) ? 'active' : ''}`}
                                         onClick={(e) => {
@@ -700,13 +709,16 @@ export default function Preekvoorbereiding() {
                       const vBookName = v?.bible_books?.name || '';
                       return (
                         <div key={k.id} className="kanttekening-item">
-                          {v && (
-                            <Link
-                              to={`/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`}
-                              className="pv-kant-verse"
-                              state={buildReturnState()}
-                            >vs. {v.verse}</Link>
-                          )}
+                          {v && (() => {
+                            const href = `/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`;
+                            return (
+                              <Link
+                                to={href}
+                                className="pv-kant-verse"
+                                onClick={goToBible(href)}
+                              >vs. {v.verse}</Link>
+                            );
+                          })()}
                           {k.marker && <span className="kant-marker">{k.marker}</span>}
                           <span className="kant-text">{expandInlineRefs(k.note_text)}</span>
                         </div>
