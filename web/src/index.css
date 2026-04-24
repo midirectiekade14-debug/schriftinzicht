@@ -1015,6 +1015,8 @@ select:focus-visible {
   background: rgba(196,149,106,0.06);
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   white-space: nowrap;
+  cursor: pointer;
+  line-height: inherit;
 }
 
 .cat-proof-ref:hover {

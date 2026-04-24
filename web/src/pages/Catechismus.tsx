@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { truncate } from '../lib/truncate';
 import { displayBookName } from '../lib/parseReference';
 import type { CatechismQuestion } from '../types/database';
 import { clickable } from '../lib/a11y';
+import VersePopup from '../components/VersePopup';
 
 interface SundaySection {
   title: string;
@@ -92,6 +92,14 @@ export default function Catechismus() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [bookmarks, setBookmarks] = useState<CatBookmark[]>(loadBookmarks);
   const [proofTexts, setProofTexts] = useState<Record<string, ProofText[]>>({});
+  const [versePopup, setVersePopup] = useState<{
+    book: string;
+    chapter: number;
+    verseStart: number;
+    rect: DOMRect;
+    questionId: string;
+    questionNumber: number;
+  } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -235,13 +243,24 @@ export default function Catechismus() {
                       <div className="cat-proofs-label">Bewijsteksten</div>
                       <div className="cat-proofs-list">
                         {proofTexts[String(q.id)].map(p => (
-                          <Link
+                          <button
                             key={p.id}
-                            to={`/bijbel/${p.bookId}/${p.chapter}?name=${encodeURIComponent(p.bookName)}&hlStart=${p.verse}&hlEnd=${p.verse}`}
+                            type="button"
                             className="cat-proof-ref"
+                            onClick={(e) => {
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                              setVersePopup({
+                                book: p.bookName,
+                                chapter: p.chapter,
+                                verseStart: p.verse,
+                                rect,
+                                questionId: String(q.id),
+                                questionNumber: q.question_number,
+                              });
+                            }}
                           >
                             {displayBookName(p.bookName)} {p.chapter}:{p.verse}
-                          </Link>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -252,6 +271,15 @@ export default function Catechismus() {
           </div>
         ))}
       </div>
+      {versePopup && (
+        <VersePopup
+          book={versePopup.book}
+          chapter={versePopup.chapter}
+          verseStart={versePopup.verseStart}
+          anchorRect={versePopup.rect}
+          onClose={() => setVersePopup(null)}
+        />
+      )}
     </>
   );
 }

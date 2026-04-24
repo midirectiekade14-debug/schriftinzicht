@@ -19,9 +19,10 @@ interface Props {
   verseEnd?: number;
   anchorRect: DOMRect;
   onClose: () => void;
+  returnState?: unknown;
 }
 
-export default function VersePopup({ book, chapter, verseStart, verseEnd, anchorRect, onClose }: Props) {
+export default function VersePopup({ book, chapter, verseStart, verseEnd, anchorRect, onClose, returnState }: Props) {
   const [verses, setVerses] = useState<VerseHit[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -125,7 +126,7 @@ export default function VersePopup({ book, chapter, verseStart, verseEnd, anchor
       </div>
       {chapterHref && (
         <div className="verse-popup-foot">
-          <Link to={chapterHref} className="verse-popup-link" onClick={onClose}>
+          <Link to={chapterHref} className="verse-popup-link" onClick={onClose} state={returnState}>
             Open hoofdstuk &rsaquo;
           </Link>
         </div>
