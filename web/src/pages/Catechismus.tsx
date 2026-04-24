@@ -49,10 +49,13 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
 
 /** Format antwoordtekst: markeer losse letters (a, b, c, ...) als superscript-badges.
  *  De letters in de HC-antwoorden verwijzen naar bewijstekst-groepen en lopen sequentieel.
- *  We zoeken letter-voor-letter naar word-boundary matches; missing letter → klaar.
+ *  We zoeken letter-voor-letter; eerste miss stopt de loop (voorkomt drift op latere woord-grenzen).
+ *  Gevolg: als het antwoord zelf met 'a' op positie 0 begint (geen voorafgaand leesteken),
+ *  worden alle markers overgeslagen. Voor HC-data niet relevant — antwoorden beginnen met proza.
  */
 function formatAnswer(text: string) {
   if (!text) return text;
+  const BOUNDARY = /[\s,;:.]/;
   const nodes: React.ReactNode[] = [];
   let pos = 0;
   let letterIdx = 0;
@@ -60,14 +63,20 @@ function formatAnswer(text: string) {
 
   while (letterIdx < LETTERS.length) {
     const L = LETTERS[letterIdx];
-    const rest = text.slice(pos);
-    const re = new RegExp(`(?<=[\\s,;:.])${L}(?=[\\s,;:.])`);
-    const m = re.exec(rest);
-    if (!m) break;
-    const absIdx = pos + m.index;
-    if (absIdx > pos) nodes.push(text.slice(pos, absIdx));
+    let found = -1;
+    for (let i = pos; i < text.length; i++) {
+      if (text[i] !== L) continue;
+      const prev = text[i - 1];
+      const next = text[i + 1];
+      if (prev !== undefined && BOUNDARY.test(prev) && next !== undefined && BOUNDARY.test(next)) {
+        found = i;
+        break;
+      }
+    }
+    if (found === -1) break;
+    if (found > pos) nodes.push(text.slice(pos, found));
     nodes.push(<sup key={`cm-${L}`} className="cat-marker">{L}</sup>);
-    pos = absIdx + 1;
+    pos = found + 1;
     letterIdx++;
   }
   if (pos < text.length) nodes.push(text.slice(pos));
@@ -214,7 +223,7 @@ export default function Catechismus() {
                   <div className="question-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="question_text" data-edit-label={`Vraag ${q.question_number}`}>{q.question_text}</div>
                   <div className="answer-container">
                     <div className="answer-label">Antwoord:</div>
-                    <div className="answer-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="answer_text" data-edit-label={`Antwoord ${q.question_number}`}>{isOpen ? formatAnswer(answer) : preview}</div>
+                    <div className="answer-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="answer_text" data-edit-label={`Antwoord ${q.question_number}`}>{isOpen ? formatAnswer(answer) : formatAnswer(preview)}</div>
                     {hasMore && (
                       <div className="expand-hint" {...clickable(() => toggleExpand(q.id), { expanded: isOpen, label: isOpen ? 'Inklappen' : 'Meer lezen' })}>
                         {isOpen ? 'Inklappen \u25B2' : 'Meer lezen \u25BC'}
