@@ -14,3 +14,8 @@ node_modules/
 
 # Eval-sets must be tracked for autoresearch reproducibility
 !web/evals/**/*.json
+
+# App needs eas.json and lockfiles for reproducible Expo builds
+!app/eas.json
+!app/package-lock.json
+!app/play-release/tools/package-lock.json
