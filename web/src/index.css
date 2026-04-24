@@ -1017,6 +1017,8 @@ select:focus-visible {
   white-space: nowrap;
   cursor: pointer;
   line-height: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .cat-proof-ref:hover {
