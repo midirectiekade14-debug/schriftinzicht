@@ -1519,6 +1519,16 @@ select:focus-visible {
   font-family: var(--font-sans);
 }
 
+.cat-marker {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0 0.15em;
+  vertical-align: super;
+  line-height: 0;
+  font-style: normal;
+}
+
 .kant-text {
   font-size: 14px;
   line-height: 1.6;

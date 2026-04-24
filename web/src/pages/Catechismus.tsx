@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
@@ -47,25 +47,33 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
   );
 }
 
-/** Format antwoordtekst: zet a), b), c) opsommingen onder elkaar */
+/** Format antwoordtekst: markeer losse letters (a, b, c, ...) als superscript-badges.
+ *  De letters in de HC-antwoorden verwijzen naar bewijstekst-groepen en lopen sequentieel.
+ *  We zoeken letter-voor-letter naar word-boundary matches; missing letter → klaar.
+ */
 function formatAnswer(text: string) {
-  // Split op patronen als "a) ", "b) ", "ten eerste,", etc.
-  const parts = text.split(/(?=[a-z]\)\s)/i);
-  if (parts.length <= 1) return text;
+  if (!text) return text;
+  const nodes: React.ReactNode[] = [];
+  let pos = 0;
+  let letterIdx = 0;
+  const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
-  const intro = parts[0].trim();
-  const items = parts.slice(1).map(p => p.trim());
+  while (letterIdx < LETTERS.length) {
+    const L = LETTERS[letterIdx];
+    const rest = text.slice(pos);
+    const re = new RegExp(`(?<=[\\s,;:.])${L}(?=[\\s,;:.])`);
+    const m = re.exec(rest);
+    if (!m) break;
+    const absIdx = pos + m.index;
+    if (absIdx > pos) nodes.push(text.slice(pos, absIdx));
+    nodes.push(<sup key={`cm-${L}`} className="cat-marker">{L}</sup>);
+    pos = absIdx + 1;
+    letterIdx++;
+  }
+  if (pos < text.length) nodes.push(text.slice(pos));
 
-  return (
-    <>
-      {intro && <span>{intro}</span>}
-      <ol className="cat-answer-list" type="a">
-        {items.map((item, i) => (
-          <li key={i}>{item.replace(/^[a-z]\)\s*/i, '')}</li>
-        ))}
-      </ol>
-    </>
-  );
+  if (nodes.length === 0) return text;
+  return <>{nodes}</>;
 }
 
 export default function Catechismus() {
