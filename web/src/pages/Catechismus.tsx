@@ -161,16 +161,16 @@ export default function Catechismus() {
     const restore = location.state as { restoreScrollY?: number; restoreExpandedId?: string } | null;
     if (!restore) return;
 
-    if (restore.restoreExpandedId) {
-      setExpanded(prev => ({ ...prev, [restore.restoreExpandedId!]: true }));
+    const expandId = restore.restoreExpandedId;
+    if (expandId) {
+      setExpanded(prev => ({ ...prev, [expandId]: true }));
     }
     if (typeof restore.restoreScrollY === 'number') {
       const y = restore.restoreScrollY;
       requestAnimationFrame(() => window.scrollTo(0, y));
     }
 
-    // Scrub state so refresh doesn't re-apply it.
-    navigate(location.pathname, { replace: true, state: null });
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
