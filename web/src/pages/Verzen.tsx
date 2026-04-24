@@ -8,6 +8,13 @@ import SelectionPopup from '../components/SelectionPopup';
 import { type CommentaryWithAuthor } from '../lib/constants';
 import { clickable } from '../lib/a11y';
 
+type ReturnState = {
+  returnTo: string;
+  returnLabel: string;
+  returnScrollY: number;
+  returnExpandedId?: string;
+};
+
 interface CrossRefRow {
   id: string;
   votes: number;
@@ -73,7 +80,8 @@ export default function Verzen() {
   const [bookmarks, setBookmarks] = useState<BijbelBookmark[]>(loadBookmarks);
   const [detailBookmarks, setDetailBookmarks] = useState<DetailBookmark[]>(loadDetailBookmarks);
   const navigate = useNavigate();
-  useLocation();
+  const location = useLocation();
+  const returnState = location.state as ReturnState | null;
   const [flipOverlay, setFlipOverlay] = useState<{ dir: 'right' | 'left'; targetCh: number } | null>(null);
 
   const chapterNum = parseInt(chapter!, 10);
@@ -292,11 +300,30 @@ export default function Verzen() {
     localStorage.setItem(DETAIL_BM_KEY, JSON.stringify(updated));
   };
 
+  const backLinkEl = returnState?.returnTo ? (
+    <button
+      type="button"
+      className="back-link"
+      onClick={() => navigate(returnState.returnTo, {
+        state: {
+          restoreScrollY: returnState.returnScrollY,
+          restoreExpandedId: returnState.returnExpandedId,
+        },
+      })}
+    >
+      &lsaquo; Terug naar {returnState.returnLabel}
+    </button>
+  ) : (
+    <Link to={`/bijbel/${bookId}?name=${encodeURIComponent(bookName)}&chapters=${chapterCount || 999}`} className="back-link">
+      &lsaquo; {bookName}
+    </Link>
+  );
+
   if (loading) {
     return (
       <>
         <div className="screen-header">
-          <Link to={`/bijbel/${bookId}?name=${encodeURIComponent(bookName)}&chapters=${chapterCount || 999}`} className="back-link">&lsaquo; {bookName}</Link>
+          {backLinkEl}
           <h1>{bookName} {chapter}</h1>
         </div>
         <div className="page"><div className="loader"><div className="spinner" /></div></div>
@@ -308,7 +335,7 @@ export default function Verzen() {
     return (
       <>
         <div className="screen-header">
-          <Link to={`/bijbel/${bookId}?name=${encodeURIComponent(bookName)}&chapters=${chapterCount || 999}`} className="back-link">&lsaquo; {bookName}</Link>
+          {backLinkEl}
           <h1>{bookName} {chapter}</h1>
         </div>
         <div className="page"><div className="error-box">{error}</div></div>
@@ -319,7 +346,7 @@ export default function Verzen() {
   return (
     <>
       <div className="screen-header">
-        <Link to={`/bijbel/${bookId}?name=${encodeURIComponent(bookName)}&chapters=${chapterCount || 999}`} className="back-link">&lsaquo; {bookName}</Link>
+        {backLinkEl}
         <h1>{bookName} {chapter}</h1>
       </div>
       <div className="page">
