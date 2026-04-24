@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { parseReference, formatRef, getSuggestions, displayBookName, expandInlineRefs } from '../lib/parseReference';
@@ -108,6 +108,8 @@ function renderCommentaryBody(text: string): React.ReactNode {
 export default function Preekvoorbereiding() {
   useDocumentTitle('Preekvoorbereiding');
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState(() => searchParams.get('q') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +180,12 @@ export default function Preekvoorbereiding() {
     setBookmarks(updated);
     setStorage(BOOKMARKS_KEY, updated);
   };
+
+  const buildReturnState = () => ({
+    returnTo: location.pathname + location.search,
+    returnLabel: 'Preekvoorbereiding',
+    returnScrollY: window.scrollY,
+  });
 
   // Autocomplete
   const suggestions = query.trim() ? getSuggestions(query, 5) : [];
@@ -340,6 +348,21 @@ export default function Preekvoorbereiding() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Restore scroll position when returning from a bible verse link
+  useEffect(() => {
+    if (loading) return;
+    const restore = location.state as { restoreScrollY?: number } | null;
+    if (!restore) return;
+
+    if (typeof restore.restoreScrollY === 'number') {
+      const y = restore.restoreScrollY;
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    }
+
+    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') { search(); setShowSuggestions(false); }
@@ -587,6 +610,7 @@ export default function Preekvoorbereiding() {
                                           to={`/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`}
                                           className="pv-comm-verse-label"
                                           onClick={e => e.stopPropagation()}
+                                          state={buildReturnState()}
                                         >{vLabel}</Link>
                                       )}
                                       <button
@@ -680,6 +704,7 @@ export default function Preekvoorbereiding() {
                             <Link
                               to={`/bijbel/${v.book_id}/${v.chapter}?name=${encodeURIComponent(vBookName)}&hlStart=${v.verse}&hlEnd=${v.verse}`}
                               className="pv-kant-verse"
+                              state={buildReturnState()}
                             >vs. {v.verse}</Link>
                           )}
                           {k.marker && <span className="kant-marker">{k.marker}</span>}
