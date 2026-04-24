@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import Logo from '../components/Logo';
 import { truncate } from '../lib/truncate';
@@ -101,6 +102,9 @@ export default function Catechismus() {
     questionNumber: number;
   } | null>(null);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => {
     (async () => {
       const [qRes, pRes] = await Promise.all([
@@ -151,6 +155,24 @@ export default function Catechismus() {
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const restore = location.state as { restoreScrollY?: number; restoreExpandedId?: string } | null;
+    if (!restore) return;
+
+    if (restore.restoreExpandedId) {
+      setExpanded(prev => ({ ...prev, [restore.restoreExpandedId!]: true }));
+    }
+    if (typeof restore.restoreScrollY === 'number') {
+      const y = restore.restoreScrollY;
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    }
+
+    // Scrub state so refresh doesn't re-apply it.
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -278,6 +300,12 @@ export default function Catechismus() {
           verseStart={versePopup.verseStart}
           anchorRect={versePopup.rect}
           onClose={() => setVersePopup(null)}
+          returnState={{
+            returnTo: '/catechismus',
+            returnLabel: `Catechismus (Vraag ${versePopup.questionNumber})`,
+            returnScrollY: window.scrollY,
+            returnExpandedId: versePopup.questionId,
+          }}
         />
       )}
     </>
