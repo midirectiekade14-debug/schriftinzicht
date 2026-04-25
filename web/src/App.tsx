@@ -29,6 +29,8 @@ const Preekvoorbereiding = lazy(() => import('./pages/Preekvoorbereiding'));
 const Bladwijzers = lazy(() => import('./pages/Bladwijzers'));
 const Leesrooster = lazy(() => import('./pages/Leesrooster'));
 const Admin = lazy(() => import('./pages/Admin'));
+const Doneren = lazy(() => import('./pages/Doneren'));
+const DonatieBedankt = lazy(() => import('./pages/DonatieBedankt'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 /* ── SVG Tab Icons ── */
@@ -85,6 +87,11 @@ const IconInstellingen = () => (
     <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4.05 4.05l1.4 1.4M14.55 14.55l1.4 1.4M4.05 15.95l1.4-1.4M14.55 5.45l1.4-1.4" />
   </svg>
 );
+const IconDoneren = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10 17.5C10 17.5 3 13 3 7.5C3 5.5 4.5 4 6.5 4C8 4 9 4.8 10 6.2C11 4.8 12 4 13.5 4C15.5 4 17 5.5 17 7.5C17 13 10 17.5 10 17.5Z" />
+  </svg>
+);
 const IconMeer = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
     <circle cx="4" cy="10" r="1.5" fill="currentColor" /><circle cx="10" cy="10" r="1.5" fill="currentColor" /><circle cx="16" cy="10" r="1.5" fill="currentColor" />
@@ -106,6 +113,7 @@ const moreItems = [
   { path: '/belijdenissen', label: 'Belijdenissen', Icon: IconBelijdenissen },
   { path: '/oudvaders', label: 'Oudvaders', Icon: IconOudvaders },
   { path: '/bladwijzers', label: 'Bladwijzers', Icon: IconBladwijzers },
+  { path: '/doneren', label: 'Doneren', Icon: IconDoneren },
   { path: '/instellingen', label: 'Instellingen', Icon: IconInstellingen },
 ];
 
@@ -184,6 +192,8 @@ function AppShell() {
             <Route path="/boeklezer/:authorId" element={<Boeklezer />} />
             <Route path="/bladwijzers" element={<Bladwijzers />} />
             <Route path="/leesrooster" element={<Leesrooster />} />
+            <Route path="/doneren" element={<Doneren />} />
+            <Route path="/doneren/bedankt" element={<DonatieBedankt />} />
             <Route path="/instellingen" element={<Instellingen />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

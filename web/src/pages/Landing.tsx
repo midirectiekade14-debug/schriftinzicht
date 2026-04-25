@@ -76,15 +76,15 @@ export default function Landing() {
                 <stop offset="0%" stopColor="#C4956A" stopOpacity={0.22} />
                 <stop offset="100%" stopColor="#8B6840" stopOpacity={0.06} />
               </linearGradient>
-              <radialGradient id="glow" cx="0.5" cy="0.5" r="0.75">
-                <stop offset="0%" stopColor="#C4956A" stopOpacity={0.1} />
-                <stop offset="65%" stopColor="#C4956A" stopOpacity={0.04} />
+              <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0%" stopColor="#C4956A" stopOpacity={0.12} />
+                <stop offset="60%" stopColor="#C4956A" stopOpacity={0.04} />
                 <stop offset="100%" stopColor="#C4956A" stopOpacity={0} />
               </radialGradient>
             </defs>
 
-            {/* Achtergrond glow — overschrijdt canvas bewust aan top zodat het niet plotseling wegvalt */}
-            <rect x="-100" y="-120" width="700" height="740" fill="url(#glow)" />
+            {/* Achtergrond glow — circle binnen viewBox; gradient vervaagt naar 0 op rand → rond + zachte fade */}
+            <circle cx={250} cy={250} r={250} fill="url(#glow)" />
 
             {/* Kruis */}
             <g transform="translate(250, 155)">
