@@ -29,7 +29,16 @@ serve(async (req) => {
       paymentId = body?.id ?? null;
     } catch { /* ignore */ }
   }
-  if (!paymentId) return new Response('missing_id', { status: 400 });
+  if (!paymentId || !/^tr_[a-zA-Z0-9]+$/.test(paymentId)) return new Response('invalid_id', { status: 400 });
+
+  // Gate: alleen processen voor donaties die we zelf hebben aangemaakt — voorkomt mass-fetch DoS
+  // door random tr_-IDs naar onze webhook te sturen.
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+  const { data: row } = await supabase.from('donations').select('mollie_id').eq('mollie_id', paymentId).maybeSingle();
+  if (!row) return new Response('not_found', { status: 404 });
 
   const mollieRes = await fetch(`https://api.mollie.com/v2/payments/${paymentId}`, {
     headers: { 'Authorization': `Bearer ${mollieKey}` },
@@ -39,11 +48,6 @@ serve(async (req) => {
     return new Response('mollie_error', { status: 502 });
   }
   const payment = await mollieRes.json();
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
 
   const update: Record<string, unknown> = { status: payment.status };
   if (payment.status === 'paid' && payment.paidAt) {

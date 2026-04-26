@@ -1,10 +1,12 @@
 // Mollie donation-status edge function.
 // Returns the current Mollie payment status (used on /doneren/bedankt).
-//
-// Deploy: supabase functions deploy donation-status --no-verify-jwt
+// DB-gated: only returns status for payments we initiated ourselves
+// (prevents enumeration of other Mollie merchants' payments).
 
 // @ts-ignore - deno
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
+// @ts-ignore - deno
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 // @ts-ignore - deno globals
 declare const Deno: { env: { get(key: string): string | undefined } };
@@ -31,6 +33,14 @@ serve(async (req) => {
   if (!paymentId || typeof paymentId !== 'string' || !/^tr_[a-zA-Z0-9]+$/.test(paymentId)) {
     return json({ error: 'invalid_payment_id' }, 400);
   }
+
+  // Gate 1: alleen status teruggeven voor donaties die we zelf hebben aangemaakt.
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+  const { data: row } = await supabase.from('donations').select('mollie_id').eq('mollie_id', paymentId).maybeSingle();
+  if (!row) return json({ error: 'not_found' }, 404);
 
   const mollieRes = await fetch(`https://api.mollie.com/v2/payments/${paymentId}`, {
     headers: { 'Authorization': `Bearer ${mollieKey}` },

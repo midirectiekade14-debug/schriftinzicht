@@ -88,7 +88,10 @@ serve(async (req) => {
     donor_message: donorMessage,
   });
   if (insertError) {
+    // Hard fail: zonder DB-record kan de webhook geen status bijwerken en is de donatie onzichtbaar.
+    // Beter de gebruiker op opnieuw-proberen dan een betaling die we nooit zien.
     console.error('Donations insert error:', insertError);
+    return json({ error: 'db_insert_failed' }, 500);
   }
 
   return json({ checkoutUrl, paymentId });

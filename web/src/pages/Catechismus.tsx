@@ -63,10 +63,13 @@ function formatAnswer(
   const BOUNDARY = /[\s,;:.]/;
   const nodes: React.ReactNode[] = [];
   let pos = 0;
-  let letterIdx = 0;
   const LETTERS = 'abcdefghijklmnopqrstuvwxyz';
 
-  while (letterIdx < LETTERS.length) {
+  // Sequentieel: zoek a, dan b vanaf positie van a, dan c, etc.
+  // Als een letter NIET gevonden wordt vanaf pos, sla over en probeer de volgende —
+  // dit voorkomt dat een gap in de reeks (bv. ontbrekende 'b') alle latere markers laat verdwijnen.
+  let consecutiveMisses = 0;
+  for (let letterIdx = 0; letterIdx < LETTERS.length; letterIdx++) {
     const L = LETTERS[letterIdx];
     let found = -1;
     for (let i = pos; i < text.length; i++) {
@@ -78,7 +81,12 @@ function formatAnswer(
         break;
       }
     }
-    if (found === -1) break;
+    if (found === -1) {
+      // Sla deze letter over maar stop als er 3 op rij missen (dan zit er geen marker-reeks meer in de rest).
+      if (++consecutiveMisses >= 3) break;
+      continue;
+    }
+    consecutiveMisses = 0;
     if (found > pos) nodes.push(text.slice(pos, found));
 
     if (availableMarkers.has(L) && onMarkerClick) {
@@ -93,9 +101,8 @@ function formatAnswer(
         >{L}</button>
       );
     }
-    // Letter heeft geen mapping → strip 'm uit de tekst (geen verwarrende losse letter).
+    // Letter heeft geen mapping in DB → strip uit tekst (geen verwarrende losse letter).
     pos = found + 1;
-    letterIdx++;
   }
   if (pos < text.length) nodes.push(text.slice(pos));
 
@@ -197,6 +204,18 @@ export default function Catechismus() {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Scroll naar actieve marker NA DOM-update zodat de proof-group div zeker gerenderd is.
+  useEffect(() => {
+    for (const [qid, letter] of Object.entries(activeMarker)) {
+      if (!letter) continue;
+      const el = document.getElementById(`proof-group-${qid}-${letter}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        break;
+      }
+    }
+  }, [activeMarker, expanded]);
+
   const isBookmarked = (qNum: number) => bookmarks.some(b => b.questionNumber === qNum);
 
   const toggleBookmark = (q: CatechismQuestion) => {
@@ -271,9 +290,8 @@ export default function Catechismus() {
               const handleMarkerClick = (letter: string) => {
                 if (!isOpen) setExpanded(prev => ({ ...prev, [q.id]: true }));
                 setActiveMarker(prev => ({ ...prev, [qid]: prev[qid] === letter ? null : letter }));
-                requestAnimationFrame(() => {
-                  document.getElementById(`proof-group-${qid}-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                });
+                // Scroll wordt afgehandeld door useEffect dat luistert op activeMarker + expanded,
+                // zodat de DOM zeker bestaat als de kaart open klapt door de klik.
               };
               return (
                 <div key={q.id} className="question-card">
