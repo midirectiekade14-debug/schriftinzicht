@@ -1,0 +1,19 @@
+Q5 row 3200 (Romeinen 7:23) — no match
+Q18 row 3318 (1 Korinthiërs 1:30) — no match
+Q19 row 3327 (Jesaja 49:22) — no match
+Q19 row 3331 (Micha 7:18) — no match
+Q26 row 3415 (Job 38:4) — no match
+Q26 row 3435 (Mattheüs 6:32) — no match
+Q26 row 3436 (Mattheüs 7:9) — no match
+Q27 row 3445 (Amos 4:7) — no match
+Q27 row 3447 (Deuteronomium 32:39) — no match
+Q38 row 3594 (Galaten 3:13) — no match
+Q46 row 3635 (Mattheüs 24:30) — no match
+Q48 row 3648 (Johannes 11:14) — no match
+Q69 row 3806 (Marcus 16:16) — no match
+Q74 row 3842 (1 Korinthiërs 7:14) — no match
+Q78 row 3875 (1 Korinthiërs 10:16) — no match
+Q93 row 3963 (Exodus 34:28) — no match
+Q96 row 4013 (Mattheüs 15:9) — no match
+Q108 row 4129 (Judas 1:23) — no match
+Q127 row 4271 (1 Thessalonicenzen 3:13) — no match
