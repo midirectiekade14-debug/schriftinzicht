@@ -2167,8 +2167,9 @@ a.preek-badge:hover {
 
 .daily-comm {
   font-family: var(--font-serif);
-  font-size: 14px;
-  color: var(--text-sec);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
   line-height: 1.6;
 }
 
@@ -5712,7 +5713,7 @@ a.pv-kant-verse:hover {
   padding: var(--sp-md) var(--sp-sm);
   overflow-y: auto;
   border-right: 1px solid var(--surface-border);
-  background: rgba(12,10,9,0.5);
+  background: var(--bg-warm);
   zoom: var(--font-scale);
 }
 @media (min-width: 960px) {
