@@ -1539,6 +1539,75 @@ select:focus-visible {
   font-style: normal;
 }
 
+.cat-marker-btn {
+  background: rgba(196,149,106,0.12);
+  border: 1px solid rgba(196,149,106,0.25);
+  border-radius: 6px;
+  padding: 1px 5px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.cat-marker-btn:hover {
+  background: rgba(196,149,106,0.22);
+  border-color: rgba(196,149,106,0.4);
+}
+
+.cat-marker-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.cat-proofs-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cat-proof-group {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.cat-proof-group.active {
+  background: rgba(196,149,106,0.08);
+  border-color: rgba(196,149,106,0.3);
+}
+
+.cat-proof-group-letter {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(196,149,106,0.15);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.cat-proof-group.active .cat-proof-group-letter {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.cat-proof-group .cat-proofs-list {
+  flex: 1;
+  margin: 0;
+}
+
 .kant-text {
   font-size: 14px;
   line-height: 1.6;

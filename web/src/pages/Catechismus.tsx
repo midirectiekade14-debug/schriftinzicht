@@ -19,6 +19,7 @@ interface ProofText {
   bookName: string;
   chapter: number;
   verse: number;
+  marker: string | null;
 }
 
 const BOOKMARKS_KEY = 'si-cat-bookmarks';
@@ -48,13 +49,16 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
   );
 }
 
-/** Format antwoordtekst: markeer losse letters (a, b, c, ...) als superscript-badges.
- *  De letters in de HC-antwoorden verwijzen naar bewijstekst-groepen en lopen sequentieel.
- *  We zoeken letter-voor-letter; eerste miss stopt de loop (voorkomt drift op latere woord-grenzen).
- *  Gevolg: als het antwoord zelf met 'a' op positie 0 begint (geen voorafgaand leesteken),
- *  worden alle markers overgeslagen. Voor HC-data niet relevant — antwoorden beginnen met proza.
+/** Format antwoordtekst: markeer losse letters (a, b, c, ...) als klikbare badges.
+ *  Letters worden alleen weergegeven als er bewijsteksten met die marker bestaan
+ *  (anders zijn ze visuele ruis zonder doel). Klikken markeert de bewijstekst-groep.
  */
-function formatAnswer(text: string) {
+function formatAnswer(
+  text: string,
+  availableMarkers: Set<string>,
+  activeMarker: string | null,
+  onMarkerClick?: (letter: string) => void,
+) {
   if (!text) return text;
   const BOUNDARY = /[\s,;:.]/;
   const nodes: React.ReactNode[] = [];
@@ -76,7 +80,20 @@ function formatAnswer(text: string) {
     }
     if (found === -1) break;
     if (found > pos) nodes.push(text.slice(pos, found));
-    nodes.push(<sup key={`cm-${L}`} className="cat-marker">{L}</sup>);
+
+    if (availableMarkers.has(L) && onMarkerClick) {
+      const isActive = activeMarker === L;
+      nodes.push(
+        <button
+          key={`cm-${L}`}
+          type="button"
+          className={`cat-marker cat-marker-btn${isActive ? ' active' : ''}`}
+          onClick={(e) => { e.stopPropagation(); onMarkerClick(L); }}
+          aria-label={`Bewijstekst-groep ${L}`}
+        >{L}</button>
+      );
+    }
+    // Letter heeft geen mapping → strip 'm uit de tekst (geen verwarrende losse letter).
     pos = found + 1;
     letterIdx++;
   }
@@ -101,6 +118,7 @@ export default function Catechismus() {
     questionId: string;
     questionNumber: number;
   } | null>(null);
+  const [activeMarker, setActiveMarker] = useState<Record<string, string | null>>({});
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -110,7 +128,7 @@ export default function Catechismus() {
       const [qRes, pRes] = await Promise.all([
         supabase.from('catechism_questions').select('*').order('question_number', { ascending: true }),
         supabase.from('catechism_proof_texts')
-          .select('id, question_id, bible_verses!verse_id(book_id, chapter, verse, bible_books(name))')
+          .select('id, question_id, marker, bible_verses!verse_id(book_id, chapter, verse, bible_books(name))')
           .order('id', { ascending: true }),
       ]);
 
@@ -134,7 +152,7 @@ export default function Catechismus() {
       }
 
       if (pRes.data) {
-        type Row = { id: number; question_id: number; bible_verses: { book_id: string; chapter: number; verse: number; bible_books: { name: string } | null } | null };
+        type Row = { id: number; question_id: number; marker: string | null; bible_verses: { book_id: string; chapter: number; verse: number; bible_books: { name: string } | null } | null };
         const byQ: Record<string, ProofText[]> = {};
         for (const row of pRes.data as unknown as Row[]) {
           const v = row.bible_verses;
@@ -147,6 +165,7 @@ export default function Catechismus() {
             bookName: v.bible_books?.name || '',
             chapter: v.chapter,
             verse: v.verse,
+            marker: row.marker,
           });
         }
         setProofTexts(byQ);
@@ -234,10 +253,28 @@ export default function Catechismus() {
               <h2>{section.title}</h2>
             </div>
             {section.questions.map((q) => {
+              const qid = String(q.id);
               const isOpen = expanded[q.id];
               const answer = q.answer_text || '';
               const preview = truncate(answer, 150);
               const hasMore = answer.length > 150;
+              const proofs = proofTexts[qid] ?? [];
+              const markersInProofs = new Set<string>();
+              for (const p of proofs) if (p.marker) markersInProofs.add(p.marker);
+              const groupedProofs: { marker: string | null; items: ProofText[] }[] = [];
+              for (const p of proofs) {
+                const last = groupedProofs[groupedProofs.length - 1];
+                if (last && last.marker === p.marker) last.items.push(p);
+                else groupedProofs.push({ marker: p.marker, items: [p] });
+              }
+              const myActive = activeMarker[qid] ?? null;
+              const handleMarkerClick = (letter: string) => {
+                if (!isOpen) setExpanded(prev => ({ ...prev, [q.id]: true }));
+                setActiveMarker(prev => ({ ...prev, [qid]: prev[qid] === letter ? null : letter }));
+                requestAnimationFrame(() => {
+                  document.getElementById(`proof-group-${qid}-${letter}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+              };
               return (
                 <div key={q.id} className="question-card">
                   <div className="cat-card-top">
@@ -253,38 +290,76 @@ export default function Catechismus() {
                   <div className="question-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="question_text" data-edit-label={`Vraag ${q.question_number}`}>{q.question_text}</div>
                   <div className="answer-container">
                     <div className="answer-label">Antwoord:</div>
-                    <div className="answer-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="answer_text" data-edit-label={`Antwoord ${q.question_number}`}>{isOpen ? formatAnswer(answer) : formatAnswer(preview)}</div>
+                    <div className="answer-text" data-edit-table="catechism_questions" data-edit-id={q.id} data-edit-col="answer_text" data-edit-label={`Antwoord ${q.question_number}`}>
+                      {formatAnswer(isOpen ? answer : preview, markersInProofs, myActive, handleMarkerClick)}
+                    </div>
                     {hasMore && (
                       <div className="expand-hint" {...clickable(() => toggleExpand(q.id), { expanded: isOpen, label: isOpen ? 'Inklappen' : 'Meer lezen' })}>
                         {isOpen ? 'Inklappen \u25B2' : 'Meer lezen \u25BC'}
                       </div>
                     )}
                   </div>
-                  {(isOpen || !hasMore) && proofTexts[String(q.id)]?.length > 0 && (
+                  {(isOpen || !hasMore) && proofs.length > 0 && (
                     <div className="cat-proofs">
                       <div className="cat-proofs-label">Bewijsteksten</div>
-                      <div className="cat-proofs-list">
-                        {proofTexts[String(q.id)].map(p => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            className="cat-proof-ref"
-                            onClick={(e) => {
-                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                              setVersePopup({
-                                book: p.bookName,
-                                chapter: p.chapter,
-                                verseStart: p.verse,
-                                rect,
-                                questionId: String(q.id),
-                                questionNumber: q.question_number,
-                              });
-                            }}
-                          >
-                            {displayBookName(p.bookName)} {p.chapter}:{p.verse}
-                          </button>
-                        ))}
-                      </div>
+                      {markersInProofs.size > 0 ? (
+                        <div className="cat-proofs-grouped">
+                          {groupedProofs.map((g, gi) => (
+                            <div
+                              key={`${g.marker ?? 'none'}-${gi}`}
+                              id={g.marker ? `proof-group-${qid}-${g.marker}` : undefined}
+                              className={`cat-proof-group${g.marker && myActive === g.marker ? ' active' : ''}`}
+                            >
+                              {g.marker && <span className="cat-proof-group-letter">{g.marker}</span>}
+                              <div className="cat-proofs-list">
+                                {g.items.map(p => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    className="cat-proof-ref"
+                                    onClick={(e) => {
+                                      const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                      setVersePopup({
+                                        book: p.bookName,
+                                        chapter: p.chapter,
+                                        verseStart: p.verse,
+                                        rect,
+                                        questionId: qid,
+                                        questionNumber: q.question_number,
+                                      });
+                                    }}
+                                  >
+                                    {displayBookName(p.bookName)} {p.chapter}:{p.verse}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="cat-proofs-list">
+                          {proofs.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className="cat-proof-ref"
+                              onClick={(e) => {
+                                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                setVersePopup({
+                                  book: p.bookName,
+                                  chapter: p.chapter,
+                                  verseStart: p.verse,
+                                  rect,
+                                  questionId: qid,
+                                  questionNumber: q.question_number,
+                                });
+                              }}
+                            >
+                              {displayBookName(p.bookName)} {p.chapter}:{p.verse}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
