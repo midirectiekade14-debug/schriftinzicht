@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import BrandIcon from '../components/BrandIcon';
 
 export default function Inloggen() {
   const navigate = useNavigate();
@@ -67,15 +68,14 @@ export default function Inloggen() {
   return (
     <div className="auth">
       <div className="auth-content">
-        {/* Logo */}
         <div className="auth-logo">
-          <div className="auth-cross">
-            <div className="auth-cross-v" />
-            <div className="auth-cross-h" />
+          <div className="auth-icon">
+            <BrandIcon />
           </div>
           <div className="auth-logo-rule" />
           <h1 className="auth-brand-main">SCHRIFT</h1>
           <h2 className="auth-brand-sub">INZICHT</h2>
+          <div className="auth-logo-rule auth-logo-rule-sm" />
         </div>
 
         <h3 className="auth-title">{mode === 'login' ? 'Welkom terug' : 'Account aanmaken'}</h3>
