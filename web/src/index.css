@@ -3493,16 +3493,16 @@ a.preek-badge:hover {
 .auth {
   min-height: 100vh;
   background: var(--bg);
-  background-image: radial-gradient(ellipse at 50% 20%, rgba(196,149,106,0.06) 0%, transparent 60%);
+  background-image: radial-gradient(ellipse at 50% 20%, rgba(196,149,106,0.07) 0%, transparent 60%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .auth-content {
-  max-width: 420px;
+  max-width: 480px;
   width: 100%;
-  padding: 64px 24px 48px;
+  padding: clamp(48px, 9vh, 96px) 24px 48px;
 }
 
 .auth-logo {
@@ -3512,62 +3512,52 @@ a.preek-badge:hover {
   margin-bottom: var(--sp-xl);
 }
 
-.auth-cross {
-  position: relative;
-  width: 28px;
-  height: 48px;
-  margin-bottom: var(--sp-md);
+.auth-icon {
+  width: min(38vw, 200px);
+  height: min(38vw, 200px);
+  margin-bottom: 18px;
 }
 
-.auth-cross-v {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 3px;
-  height: 48px;
-  border-radius: 1.5px;
-  background: var(--accent);
-}
-
-.auth-cross-h {
-  position: absolute;
-  top: 14px;
-  left: 0;
-  width: 28px;
-  height: 3px;
-  border-radius: 1.5px;
-  background: var(--accent);
+.auth-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .auth-logo-rule {
-  width: 100px;
+  width: clamp(220px, 40vw, 320px);
   height: 0.5px;
   background: var(--accent);
-  opacity: 0.25;
-  margin-bottom: 10px;
+  opacity: 0.15;
+  margin-bottom: 14px;
+}
+
+.auth-logo-rule-sm {
+  width: clamp(180px, 32vw, 250px);
+  margin-top: 14px;
+  margin-bottom: 0;
 }
 
 .auth-brand-main {
   font-family: var(--font-serif);
-  font-size: 25px;
+  font-size: clamp(30px, 4.8vw, 44px);
   font-weight: 700;
-  letter-spacing: 7px;
+  letter-spacing: clamp(8px, 1.2vw, 12px);
   color: var(--accent);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .auth-brand-sub {
   font-family: var(--font-serif);
-  font-size: 17px;
+  font-size: clamp(20px, 3.4vw, 30px);
   font-weight: 400;
-  letter-spacing: 9px;
+  letter-spacing: clamp(10px, 1.6vw, 16px);
   color: var(--text-sec);
   opacity: 0.5;
 }
 
 .auth-title {
   font-family: var(--font-serif);
-  font-size: 22px;
+  font-size: clamp(24px, 3vw, 30px);
   font-weight: 700;
   color: var(--text);
   text-align: center;
@@ -3576,7 +3566,7 @@ a.preek-badge:hover {
 
 .auth-subtitle {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: clamp(15px, 1.5vw, 17px);
   color: var(--text-muted);
   text-align: center;
   margin-bottom: var(--sp-lg);
