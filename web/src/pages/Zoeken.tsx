@@ -166,7 +166,7 @@ function extractVerseRange(text: string, startV: number, endV: number): string {
   if (paragraphs.length === 0) return text;
 
   // Matcht: "Vs. 1", "Vers 1", "Vs. 2-5", "IV. Vs. 1-23" (Romeinse hoofdstuk-prefix optioneel)
-  const verseMarkerRe = /^(?:[IVXLC]+\.\s*)?(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–\-]\s*(\d+))?[.\s:,]/i;
+  const verseMarkerRe = /^(?:[IVXLC]+\.\s*)?(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–-]\s*(\d+))?[.\s:,]/i;
   const verseStartRe = /^(\d+)[.\s]/;
   const result: string[] = [];
   let inRange = false;
@@ -800,6 +800,8 @@ export default function Zoeken() {
         }
       } catch (err) {
         const msg = describeError(err);
+        // Log full detail server-side; show generic copy so Postgres hints /
+        // schema names don't leak (security audit L-2).
         console.error('[Zoeken] tekst-zoekopdracht faalde:', msg, err);
         const isNetwork = /failed to fetch|network|offline/i.test(msg);
         const isTimeout = /timeout|57014/i.test(msg);
@@ -807,7 +809,7 @@ export default function Zoeken() {
           ? 'Geen verbinding met de zoekserver. Controleer je internetverbinding en probeer het opnieuw.'
           : isTimeout
           ? 'De zoekopdracht duurde te lang. Probeer een specifiekere zoekterm.'
-          : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
+          : 'Fout bij het zoeken. Probeer een andere zoekterm of probeer het later opnieuw.');
       } finally {
         setLoading(false);
       }
@@ -907,11 +909,12 @@ export default function Zoeken() {
       setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
     } catch (err) {
       const msg = describeError(err);
+      // Log full detail server-side; show generic copy (security audit L-2).
       console.error('[Zoeken] verwijzing-zoekopdracht faalde:', msg, err);
       const isNetwork = /failed to fetch|network|offline/i.test(msg);
       setError(isNetwork
         ? 'Geen verbinding met de server. Controleer je internetverbinding en probeer het opnieuw.'
-        : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
+        : 'Fout bij het zoeken. Probeer het later opnieuw.');
     } finally {
       setLoading(false);
     }

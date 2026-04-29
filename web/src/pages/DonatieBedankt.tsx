@@ -9,10 +9,13 @@ export default function DonatieBedankt() {
   useDocumentTitle('Bedankt');
   const [params] = useSearchParams();
   const paymentId = params.get('id');
-  const [status, setStatus] = useState<Status>('loading');
+  // Derive the no-id case from the initial value instead of calling
+  // setStatus synchronously inside the effect (avoids the cascading
+  // render react-hooks/set-state-in-effect lint warns about).
+  const [status, setStatus] = useState<Status>(() => paymentId ? 'loading' : 'unknown');
 
   useEffect(() => {
-    if (!paymentId) { setStatus('unknown'); return; }
+    if (!paymentId) return;
     let cancelled = false;
     (async () => {
       try {

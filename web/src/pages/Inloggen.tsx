@@ -42,10 +42,10 @@ export default function Inloggen() {
       const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (err) {
         const msg = err.message.toLowerCase();
-        if (msg.includes('invalid login')) setError('Onjuist e-mailadres of wachtwoord.');
-        else if (msg.includes('not confirmed')) setError('E-mailadres is nog niet bevestigd.');
-        else if (msg.includes('rate')) setError('Te veel pogingen. Probeer het later opnieuw.');
-        else setError(err.message);
+        // Same generic message for invalid_login + not_confirmed to prevent
+        // account enumeration (security audit M-6).
+        if (msg.includes('rate')) setError('Te veel pogingen. Probeer het later opnieuw.');
+        else setError('Onjuist e-mailadres of wachtwoord, of het account is nog niet bevestigd.');
       } else {
         navigate(returnTo, { replace: true });
       }
@@ -53,11 +53,15 @@ export default function Inloggen() {
       const { error: err } = await supabase.auth.signUp({ email: email.trim(), password });
       if (err) {
         const msg = err.message.toLowerCase();
-        if (msg.includes('already registered') || msg.includes('already been registered')) setError('Dit e-mailadres is al in gebruik.');
-        else if (msg.includes('password') && msg.includes('6')) setError('Wachtwoord moet minimaal 6 tekens bevatten.');
-        else setError(err.message);
+        // Generic password-policy message; specifics leak the policy back.
+        if (msg.includes('password')) setError('Het wachtwoord voldoet niet aan de eisen.');
+        else if (msg.includes('rate')) setError('Te veel pogingen. Probeer het later opnieuw.');
+        // For "already registered" we mirror the success copy: never confirm
+        // whether an address is in use (security audit M-6).
+        else if (msg.includes('already')) setSuccess('Als dit e-mailadres nog niet geregistreerd is, ontvang je een bevestiging in je inbox.');
+        else setError('Registratie is mislukt. Probeer het later opnieuw.');
       } else {
-        setSuccess('Account aangemaakt! Controleer je e-mail om te bevestigen.');
+        setSuccess('Als dit e-mailadres nog niet geregistreerd is, ontvang je een bevestiging in je inbox.');
       }
     }
     setLoading(false);
