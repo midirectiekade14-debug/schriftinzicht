@@ -3,6 +3,19 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import BrandIcon from '../components/BrandIcon';
 
+// Client-side password policy (security audit M-7 partial close — definitive
+// enforcement still needs Supabase Dashboard → Auth → Policies). Bypassable
+// by anyone who calls supabase.auth.signUp directly, but the UI form is the
+// path 99% of registrations take, so this raises the bar visibly.
+const PW_MIN_LEN = 10;
+function passwordIssue(pw: string): string | null {
+  if (pw.length < PW_MIN_LEN) return `Wachtwoord moet minstens ${PW_MIN_LEN} tekens hebben.`;
+  if (!/[a-z]/.test(pw)) return 'Wachtwoord moet een kleine letter bevatten.';
+  if (!/[A-Z]/.test(pw)) return 'Wachtwoord moet een hoofdletter bevatten.';
+  if (!/\d/.test(pw))    return 'Wachtwoord moet een cijfer bevatten.';
+  return null;
+}
+
 export default function Inloggen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -34,6 +47,13 @@ export default function Inloggen() {
       setError('Vul e-mail en wachtwoord in.');
       return;
     }
+
+    // Enforce password policy on the signup path (security audit M-7).
+    if (mode === 'register') {
+      const issue = passwordIssue(password);
+      if (issue) { setError(issue); return; }
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
