@@ -19,3 +19,6 @@ node_modules/
 !app/eas.json
 !app/package-lock.json
 !app/play-release/tools/package-lock.json
+
+# security audit working files (md is committed, tsv is local)
+security/**/security-audit-results.tsv
