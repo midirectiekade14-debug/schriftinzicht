@@ -166,7 +166,7 @@ function extractVerseRange(text: string, startV: number, endV: number): string {
   if (paragraphs.length === 0) return text;
 
   // Matcht: "Vs. 1", "Vers 1", "Vs. 2-5", "IV. Vs. 1-23" (Romeinse hoofdstuk-prefix optioneel)
-  const verseMarkerRe = /^(?:[IVXLC]+\.\s*)?(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–\-]\s*(\d+))?[.\s:,]/i;
+  const verseMarkerRe = /^(?:[IVXLC]+\.\s*)?(?:Vs?\.?|Vers|Vss?\.?)\s*(\d+)(?:\s*[–-]\s*(\d+))?[.\s:,]/i;
   const verseStartRe = /^(\d+)[.\s]/;
   const result: string[] = [];
   let inRange = false;

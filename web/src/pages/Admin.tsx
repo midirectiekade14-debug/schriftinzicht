@@ -27,15 +27,16 @@ export default function Admin() {
   // function so the client cannot lie about its role (security audit M-1).
   // The earlier hardcoded email allowlist also leaked the owner's address
   // into the public bundle (I-1) — removed here.
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  // Derive the unknown initial state without calling setState in the
+  // effect (avoids react-hooks/set-state-in-effect cascading renders).
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(() => isLoggedIn ? null : false);
 
   useEffect(() => {
-    if (!isLoggedIn) { setIsAdmin(false); return; }
+    if (!isLoggedIn) return;
     let cancelled = false;
     supabase.rpc('is_admin').then(({ data, error }) => {
       if (cancelled) return;
-      if (error) { setIsAdmin(false); return; }
-      setIsAdmin(data === true);
+      setIsAdmin(error ? false : data === true);
     });
     return () => { cancelled = true; };
   }, [isLoggedIn]);
