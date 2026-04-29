@@ -8,7 +8,7 @@ import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
+import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
 import { clickable } from '../lib/a11y';
 
@@ -304,6 +304,7 @@ const HISTORY_KEY = 'si-search-history';
 const SAVED_KEY = 'si-saved-verses';
 const DETAIL_BM_KEY = 'si-detail-bookmarks';
 const MAX_HISTORY = 15;
+const LOAD_PAGE_SIZE = 100;
 
 interface SavedVerse {
   ref: string;
@@ -363,7 +364,97 @@ interface SermonSearchRow {
   year_preached: number | null;
   source_collection: string | null;
   sermon_text: string;
-  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null } | null;
+  authors: { name: string; born_year: number | null; died_year: number | null; era: string | null; portrait_url: string | null } | null;
+}
+
+interface AuthorIndexEntry {
+  id: string;
+  name: string;
+  era: string | null;
+  born_year: number | null;
+  died_year: number | null;
+  portrait_url: string | null;
+  matchKeys: string[]; // lowercase tokens that should map to this author
+}
+
+// Module-level once-per-tab author cache. Authors change rarely; loading once
+// avoids hitting Supabase for every search.
+let authorIndexCache: AuthorIndexEntry[] | null = null;
+let authorIndexPromise: Promise<AuthorIndexEntry[]> | null = null;
+
+function normaliseToken(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+async function loadAuthorIndex(): Promise<AuthorIndexEntry[]> {
+  if (authorIndexCache) return authorIndexCache;
+  if (authorIndexPromise) return authorIndexPromise;
+  authorIndexPromise = (async () => {
+    const { data } = await supabase
+      .from('authors')
+      .select('id, name, era, born_year, died_year, portrait_url');
+    const rows = (data || []) as Array<{ id: string; name: string; era: string | null; born_year: number | null; died_year: number | null; portrait_url: string | null }>;
+    const index: AuthorIndexEntry[] = rows.map((a) => {
+      const tokens = a.name.split(/[\s.]+/).filter((t) => t.length >= 3);
+      const last = tokens[tokens.length - 1] || '';
+      const keys = new Set<string>();
+      keys.add(normaliseToken(a.name));
+      if (last) keys.add(normaliseToken(last));
+      // Voor "à Brakel": ook "brakel"
+      if (tokens.length >= 2) keys.add(normaliseToken(tokens.slice(-2).join(' ')));
+      return {
+        id: a.id,
+        name: a.name,
+        era: a.era,
+        born_year: a.born_year,
+        died_year: a.died_year,
+        portrait_url: a.portrait_url,
+        matchKeys: [...keys],
+      };
+    });
+    authorIndexCache = index;
+    return index;
+  })();
+  return authorIndexPromise;
+}
+
+/** Splits een vrije zoekopdracht in: gedetecteerde auteur-IDs (zodat we kunnen
+ *  filteren) plus de overgebleven tekstuele zoekterm. Voorkomt dat "genade
+ *  bunyan" matches op Luther geeft alleen omdat zijn voetnoten Bunyan noemen. */
+function extractAuthorFilter(q: string, authors: AuthorIndexEntry[]): {
+  authorIds: string[];
+  authorNames: string[];
+  remainingText: string;
+} {
+  const trimmed = q.trim();
+  if (!trimmed || authors.length === 0) {
+    return { authorIds: [], authorNames: [], remainingText: trimmed };
+  }
+  const tokens = trimmed.split(/\s+/);
+  const matchedIds = new Set<string>();
+  const matchedNames = new Set<string>();
+  const consumed = new Set<number>();
+  // Probeer eerst 2-token paren (bv. "van der groe") en daarna losse tokens.
+  for (let span = 2; span >= 1; span--) {
+    for (let i = 0; i + span <= tokens.length; i++) {
+      if (consumed.has(i)) continue;
+      const phrase = tokens.slice(i, i + span).join(' ');
+      const norm = normaliseToken(phrase);
+      if (norm.length < 3) continue;
+      const hit = authors.find((a) => a.matchKeys.includes(norm));
+      if (hit) {
+        matchedIds.add(hit.id);
+        matchedNames.add(hit.name);
+        for (let j = i; j < i + span; j++) consumed.add(j);
+      }
+    }
+  }
+  const remaining = tokens.filter((_, idx) => !consumed.has(idx)).join(' ');
+  return {
+    authorIds: [...matchedIds],
+    authorNames: [...matchedNames],
+    remainingText: remaining,
+  };
 }
 
 interface DetailBookmark {
@@ -381,6 +472,67 @@ function loadDetailBookmarks(): DetailBookmark[] {
 }
 
 
+
+type AuthorBundle = { name: string; born_year: number | null; died_year: number | null; era: string | null; portrait_url: string | null } | null | undefined;
+
+function AuthorGroupHeader({ author, fallbackName, count }: { author: AuthorBundle; fallbackName: string; count: number }) {
+  const name = author?.name || fallbackName;
+  const years = author?.born_year ? `${author.born_year}\u2013${author.died_year || '?'}` : '';
+  const era = author?.era;
+  const portrait = author?.portrait_url;
+  return (
+    <div className="tr-author-card">
+      {portrait ? (
+        <img src={portrait} alt={name} className="tr-author-portrait" />
+      ) : (
+        <div className="tr-author-portrait tr-author-portrait-placeholder">{name.charAt(0)}</div>
+      )}
+      <div className="tr-author-info">
+        <div className="tr-author-line-1">
+          <span className="tr-author-name">{name}</span>
+          <span className="tr-author-count">{count}{'\u00d7'}</span>
+        </div>
+        <div className="tr-author-line-2">
+          {years && <span className="tr-author-years">{years}</span>}
+          {era && <span className="tr-author-era" style={{ color: ERA_COLORS[era] || 'var(--accent)' }}>{era}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SearchSummary({
+  query, total, shown, label, authorFilter, onClearAuthor,
+}: {
+  query: string;
+  total: number;
+  shown: number;
+  label: string;
+  authorFilter: { ids: string[]; names: string[] };
+  onClearAuthor: () => void;
+}) {
+  const hasAuthor = authorFilter.names.length > 0;
+  return (
+    <div className="tr-tab-subtitle">
+      {query
+        ? <>{`"${query}" \u2014 ${total} keer in ${label}`}</>
+        : <>{total} {label}</>}
+      {hasAuthor && (
+        <>
+          {' \u00b7 '}
+          {authorFilter.names.map((n) => (
+            <span key={n} className="tr-author-chip">
+              {n}
+              <button type="button" className="tr-author-chip-rm" onClick={onClearAuthor} aria-label={`Filter ${n} verwijderen`}>{'\u00d7'}</button>
+            </span>
+          ))}
+        </>
+      )}
+      {shown < total && <span className="tr-shown"> (eerste {shown} getoond)</span>}
+    </div>
+  );
+}
+
 export default function Zoeken() {
   useDocumentTitle('Zoeken');
   const [searchParams] = useSearchParams();
@@ -396,6 +548,11 @@ export default function Zoeken() {
   const [textSermons, setTextSermons] = useState<SermonSearchRow[]>([]);
   const [textSermonTotal, setTextSermonTotal] = useState(0);
   const [textTab, setTextTab] = useState<'bijbel' | 'verklaringen' | 'preken'>('bijbel');
+  const [authorIndex, setAuthorIndex] = useState<AuthorIndexEntry[]>(() => authorIndexCache || []);
+  const [activeAuthorFilter, setActiveAuthorFilter] = useState<{ ids: string[]; names: string[] }>({ ids: [], names: [] });
+  const [commLimit, setCommLimit] = useState(LOAD_PAGE_SIZE);
+  const [sermonLimit, setSermonLimit] = useState(LOAD_PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState<'comm' | 'sermon' | null>(null);
   const [commentaries, setCommentaries] = useState<CommentaryWithAuthor[]>([]);
   const [kanttekeningen, setKanttekeningen] = useState<Kanttekening[]>([]);
   const [crossRefs, setCrossRefs] = useState<CrossRefRow[]>([]);
@@ -458,6 +615,15 @@ export default function Zoeken() {
     if (prefill && query === prefill && query) search();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, searchParams]);
+
+  // Load author index once for query-side author detection
+  useEffect(() => {
+    if (authorIndexCache) {
+      setAuthorIndex(authorIndexCache);
+      return;
+    }
+    loadAuthorIndex().then(setAuthorIndex).catch(() => { /* search blijft werken zonder index */ });
+  }, []);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -534,42 +700,70 @@ export default function Zoeken() {
         // idx_commentaries_fulltext, idx_sermons_fulltext) — ILIKE op long-text kolommen
         // veroorzaakt anders een statement_timeout. textSearch() bouwt een websearch-tsquery
         // dat die GIN-indexen kan gebruiken.
-        const tsQuery = q.trim();
+        const idx = authorIndex.length > 0 ? authorIndex : (authorIndexCache || await loadAuthorIndex());
+        const filter = extractAuthorFilter(q.trim(), idx);
+        setActiveAuthorFilter({ ids: filter.authorIds, names: filter.authorNames });
+        setCommLimit(LOAD_PAGE_SIZE);
+        setSermonLimit(LOAD_PAGE_SIZE);
+        const tsQuery = filter.remainingText;
         const ftConfig = { type: 'websearch' as const, config: 'dutch' };
+        const hasText = tsQuery.length > 0;
+        const hasAuthor = filter.authorIds.length > 0;
+
+        // Bouw queries met optionele author-filter en optionele full-text.
+        // Wanneer een auteur is gedetecteerd maar geen tekst, halen we al zijn
+        // werken op (ranked desc op jaar). Wanneer er geen author is, gebruiken
+        // we tsvector. Bibliebron heeft geen author-concept, dus die gebruikt
+        // alleen de tsvector.
+        let verseCountQ = supabase.from('bible_verses').select('id', { count: 'exact', head: true });
+        let versesQ = supabase
+          .from('bible_verses')
+          .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation, testament, book_order)')
+          .order('book_id').order('chapter').order('verse').limit(500);
+        if (hasText) {
+          verseCountQ = verseCountQ.textSearch('text_sv', tsQuery, ftConfig);
+          versesQ = versesQ.textSearch('text_sv', tsQuery, ftConfig);
+        } else {
+          // Zonder text query (alleen auteur), is een Bijbel-zoek niet zinvol.
+          // We laten de count op 0 lopen via een onmogelijke filter zodat het
+          // tabblad leeg blijft.
+          verseCountQ = verseCountQ.eq('id', '00000000-0000-0000-0000-000000000000');
+          versesQ = versesQ.eq('id', '00000000-0000-0000-0000-000000000000');
+        }
+
+        let commCountQ = supabase.from('commentaries').select('id', { count: 'exact', head: true });
+        let commQ = supabase
+          .from('commentaries')
+          .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era, portrait_url)')
+          .order('year_written', { ascending: true })
+          .limit(LOAD_PAGE_SIZE);
+        if (hasText) {
+          commCountQ = commCountQ.textSearch('commentary_text', tsQuery, ftConfig);
+          commQ = commQ.textSearch('commentary_text', tsQuery, ftConfig);
+        }
+        if (hasAuthor) {
+          commCountQ = commCountQ.in('author_id', filter.authorIds);
+          commQ = commQ.in('author_id', filter.authorIds);
+        }
+
+        let sermCountQ = supabase.from('sermons').select('id', { count: 'exact', head: true });
+        let sermQ = supabase
+          .from('sermons')
+          .select('id, title, year_preached, source_collection, sermon_text, authors(name, born_year, died_year, era, portrait_url)')
+          .order('year_preached', { ascending: true })
+          .limit(LOAD_PAGE_SIZE);
+        if (hasText) {
+          sermCountQ = sermCountQ.textSearch('sermon_text', tsQuery, ftConfig);
+          sermQ = sermQ.textSearch('sermon_text', tsQuery, ftConfig);
+        }
+        if (hasAuthor) {
+          sermCountQ = sermCountQ.in('author_id', filter.authorIds);
+          sermQ = sermQ.in('author_id', filter.authorIds);
+        }
+
         // Parallel: count+fetch verses, commentaries, sermons
         const [verseCount, versesRes, commCount, commRes, sermonCount, sermonRes] = await Promise.all([
-          supabase
-            .from('bible_verses')
-            .select('id', { count: 'exact', head: true })
-            .textSearch('text_sv', tsQuery, ftConfig),
-          supabase
-            .from('bible_verses')
-            .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation, testament, book_order)')
-            .textSearch('text_sv', tsQuery, ftConfig)
-            .order('book_id')
-            .order('chapter')
-            .order('verse')
-            .limit(500),
-          supabase
-            .from('commentaries')
-            .select('id', { count: 'exact', head: true })
-            .textSearch('commentary_text', tsQuery, ftConfig),
-          supabase
-            .from('commentaries')
-            .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
-            .textSearch('commentary_text', tsQuery, ftConfig)
-            .order('year_written', { ascending: true })
-            .limit(100),
-          supabase
-            .from('sermons')
-            .select('id', { count: 'exact', head: true })
-            .textSearch('sermon_text', tsQuery, ftConfig),
-          supabase
-            .from('sermons')
-            .select('id, title, year_preached, source_collection, sermon_text, authors(name, born_year, died_year, era)')
-            .textSearch('sermon_text', tsQuery, ftConfig)
-            .order('year_preached', { ascending: true })
-            .limit(100),
+          verseCountQ, versesQ, commCountQ, commQ, sermCountQ, sermQ,
         ]);
 
         if (versesRes.error) throw versesRes.error;
@@ -589,11 +783,14 @@ export default function Zoeken() {
         setTextSermonTotal(textSermonTotal);
         setTextSermons(textSermons);
 
-        // Auto-select first tab with results
-        const textTab = textResults.length ? 'bijbel' : textCommentaries.length ? 'verklaringen' : 'preken';
-        if (textResults.length) setTextTab('bijbel');
-        else if (textCommentaries.length) setTextTab('verklaringen');
-        else if (textSermons.length) setTextTab('preken');
+        // Auto-select first tab with results — bij author-only filter
+        // overslaan we Bijbel omdat dat tabblad geen author-concept heeft.
+        const textTab: 'bijbel' | 'verklaringen' | 'preken' =
+          (!hasAuthor && textResults.length) ? 'bijbel'
+          : textCommentaries.length ? 'verklaringen'
+          : textSermons.length ? 'preken'
+          : 'bijbel';
+        setTextTab(textTab);
 
         // Cache results
         setCache(cacheKey, { textTotal, textResults, textCommTotal, textCommentaries, textSermonTotal, textSermons, textTab });
@@ -720,6 +917,56 @@ export default function Zoeken() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadMoreCommentaries = useCallback(async () => {
+    if (loadingMore) return;
+    setLoadingMore('comm');
+    try {
+      const nextLimit = commLimit + LOAD_PAGE_SIZE;
+      const ftConfig = { type: 'websearch' as const, config: 'dutch' };
+      const idx = authorIndex.length > 0 ? authorIndex : (authorIndexCache || []);
+      const filter = extractAuthorFilter(query.trim(), idx);
+      let q = supabase
+        .from('commentaries')
+        .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era, portrait_url)')
+        .order('year_written', { ascending: true })
+        .range(commLimit, nextLimit - 1);
+      if (filter.remainingText.length > 0) q = q.textSearch('commentary_text', filter.remainingText, ftConfig);
+      if (filter.authorIds.length > 0) q = q.in('author_id', filter.authorIds);
+      const { data } = await q;
+      if (data && data.length > 0) {
+        setTextCommentaries((prev) => [...prev, ...((data as unknown) as CommentaryWithAuthor[])]);
+        setCommLimit(nextLimit);
+      }
+    } finally {
+      setLoadingMore(null);
+    }
+  }, [commLimit, query, authorIndex, loadingMore]);
+
+  const loadMoreSermons = useCallback(async () => {
+    if (loadingMore) return;
+    setLoadingMore('sermon');
+    try {
+      const nextLimit = sermonLimit + LOAD_PAGE_SIZE;
+      const ftConfig = { type: 'websearch' as const, config: 'dutch' };
+      const idx = authorIndex.length > 0 ? authorIndex : (authorIndexCache || []);
+      const filter = extractAuthorFilter(query.trim(), idx);
+      let q = supabase
+        .from('sermons')
+        .select('id, title, year_preached, source_collection, sermon_text, authors(name, born_year, died_year, era, portrait_url)')
+        .order('year_preached', { ascending: true })
+        .range(sermonLimit, nextLimit - 1);
+      if (filter.remainingText.length > 0) q = q.textSearch('sermon_text', filter.remainingText, ftConfig);
+      if (filter.authorIds.length > 0) q = q.in('author_id', filter.authorIds);
+      const { data } = await q;
+      if (data && data.length > 0) {
+        setTextSermons((prev) => [...prev, ...((data as unknown) as SermonSearchRow[])]);
+        setSermonLimit(nextLimit);
+      }
+    } finally {
+      setLoadingMore(null);
+    }
+  }, [sermonLimit, query, authorIndex, loadingMore]);
 
   const search = useCallback(() => searchWithQuery(query), [query, searchWithQuery]);
 
@@ -1275,20 +1522,22 @@ export default function Zoeken() {
                 .sort((a, b) => (a[1].author?.born_year || 9999) - (b[1].author?.born_year || 9999));
               return (
                 <>
-                  <div className="tr-tab-subtitle">
-                    "{query.trim()}" — {textCommTotal} keer in verklaringen
-                    {textCommentaries.length < textCommTotal && <span className="tr-shown"> (eerste {textCommentaries.length} getoond)</span>}
-                  </div>
+                  <SearchSummary
+                    query={query.trim()}
+                    total={textCommTotal}
+                    shown={textCommentaries.length}
+                    label="verklaringen"
+                    authorFilter={activeAuthorFilter}
+                    onClearAuthor={() => searchWithQuery(query.split(/\s+/).filter((w) => !activeAuthorFilter.names.some((n) => n.toLowerCase().includes(w.toLowerCase()) || w.toLowerCase().includes(n.toLowerCase().split(' ').pop() || ''))).join(' '))}
+                  />
                   {groups.map(([authorName, group]) => {
                     const groupKey = `comm-${authorName}`;
                     const isCollapsed = textCollapsed[groupKey] !== false && group.items.length > 3;
                     const shown = isCollapsed ? group.items.slice(0, 3) : group.items;
+                    const author = group.author;
                     return (
-                      <div key={groupKey} className="tr-book-group">
-                        <div className="tr-book-header">
-                          <span className="tr-book-name">{authorName}</span>
-                          <span className="tr-book-count">{group.items.length}×</span>
-                        </div>
+                      <div key={groupKey} className="tr-book-group tr-author-group">
+                        <AuthorGroupHeader author={author} fallbackName={authorName} count={group.items.length} />
                         {shown.map((item) => {
                           const text = sanitizeContent(item.commentary_text || '');
                           const snippet = snippetAround(text, query.trim(), 140);
@@ -1312,6 +1561,17 @@ export default function Zoeken() {
                       </div>
                     );
                   })}
+                  {textCommentaries.length < textCommTotal && (
+                    <button
+                      className="tr-load-more"
+                      onClick={loadMoreCommentaries}
+                      disabled={loadingMore === 'comm'}
+                    >
+                      {loadingMore === 'comm'
+                        ? 'Laden…'
+                        : `Toon volgende ${Math.min(LOAD_PAGE_SIZE, textCommTotal - textCommentaries.length)} ▾`}
+                    </button>
+                  )}
                 </>
               );
             })()}
@@ -1323,37 +1583,39 @@ export default function Zoeken() {
               }
               type SermonGroup = { author: SermonSearchRow['authors']; items: SermonSearchRow[] };
               const byAuthor = new Map<string, SermonGroup>();
-              for (const s of textSermons) {
-                const key = s.authors?.name || 'Onbekend';
-                if (!byAuthor.has(key)) byAuthor.set(key, { author: s.authors, items: [] });
-                byAuthor.get(key)!.items.push(s);
+              for (const sm of textSermons) {
+                const key = sm.authors?.name || 'Onbekend';
+                if (!byAuthor.has(key)) byAuthor.set(key, { author: sm.authors, items: [] });
+                byAuthor.get(key)!.items.push(sm);
               }
               const groups = Array.from(byAuthor.entries())
                 .sort((a, b) => (a[1].author?.born_year || 9999) - (b[1].author?.born_year || 9999));
               return (
                 <>
-                  <div className="tr-tab-subtitle">
-                    "{query.trim()}" — {textSermonTotal} keer in preken
-                    {textSermons.length < textSermonTotal && <span className="tr-shown"> (eerste {textSermons.length} getoond)</span>}
-                  </div>
+                  <SearchSummary
+                    query={query.trim()}
+                    total={textSermonTotal}
+                    shown={textSermons.length}
+                    label="preken"
+                    authorFilter={activeAuthorFilter}
+                    onClearAuthor={() => searchWithQuery(query.split(/\s+/).filter((w) => !activeAuthorFilter.names.some((n) => n.toLowerCase().includes(w.toLowerCase()) || w.toLowerCase().includes(n.toLowerCase().split(' ').pop() || ''))).join(' '))}
+                  />
                   {groups.map(([authorName, group]) => {
                     const groupKey = `serm-${authorName}`;
                     const isCollapsed = textCollapsed[groupKey] !== false && group.items.length > 3;
                     const shown = isCollapsed ? group.items.slice(0, 3) : group.items;
+                    const author = group.author;
                     return (
-                      <div key={groupKey} className="tr-book-group">
-                        <div className="tr-book-header">
-                          <span className="tr-book-name">{authorName}</span>
-                          <span className="tr-book-count">{group.items.length}×</span>
-                        </div>
-                        {shown.map((s) => {
-                          const text = s.sermon_text || '';
+                      <div key={groupKey} className="tr-book-group tr-author-group">
+                        <AuthorGroupHeader author={author} fallbackName={authorName} count={group.items.length} />
+                        {shown.map((sm) => {
+                          const text = sm.sermon_text || '';
                           const snippet = snippetAround(text, query.trim(), 140);
-                          const ref = s.year_preached ? String(s.year_preached) : '';
+                          const ref = sm.year_preached ? String(sm.year_preached) : '';
                           return (
                             <Link
-                              key={s.id}
-                              to={`/preek/${s.id}`}
+                              key={sm.id}
+                              to={`/preek/${sm.id}`}
                               className="text-result-item"
                             >
                               {ref && <span className="text-result-ref">{ref}</span>}
@@ -1369,6 +1631,17 @@ export default function Zoeken() {
                       </div>
                     );
                   })}
+                  {textSermons.length < textSermonTotal && (
+                    <button
+                      className="tr-load-more"
+                      onClick={loadMoreSermons}
+                      disabled={loadingMore === 'sermon'}
+                    >
+                      {loadingMore === 'sermon'
+                        ? 'Laden…'
+                        : `Toon volgende ${Math.min(LOAD_PAGE_SIZE, textSermonTotal - textSermons.length)} ▾`}
+                    </button>
+                  )}
                 </>
               );
             })()}
