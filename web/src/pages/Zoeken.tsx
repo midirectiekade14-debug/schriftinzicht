@@ -8,9 +8,32 @@ import SelectionPopup from '../components/SelectionPopup';
 import { truncate } from '../lib/truncate';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
+import { dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor } from '../lib/constants';
 import { getStorage, setStorage } from '../lib/storage';
 import { clickable } from '../lib/a11y';
+
+/** Knip een korte fragment uit een lange tekst rond de zoekterm, zodat de match
+ *  zichtbaar is in een compacte resultaat-rij. Valt terug op het begin als de
+ *  exacte term niet voorkomt (kan gebeuren bij stemming via tsquery). */
+function snippetAround(text: string, term: string, maxLen = 140): string {
+  const t = (text || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= maxLen) return t;
+  const trimmedTerm = term.trim();
+  if (trimmedTerm) {
+    const idx = t.toLowerCase().indexOf(trimmedTerm.toLowerCase());
+    if (idx >= 0) {
+      const ctxLeft = Math.floor((maxLen - trimmedTerm.length) * 0.35);
+      const start = Math.max(0, idx - ctxLeft);
+      const end = Math.min(t.length, start + maxLen);
+      const realStart = Math.max(0, end - maxLen);
+      let snippet = t.slice(realStart, end);
+      if (realStart > 0) snippet = '… ' + snippet.replace(/^\S*\s+/, '');
+      if (end < t.length) snippet = snippet.replace(/\s+\S*$/, '') + ' …';
+      return snippet;
+    }
+  }
+  return t.slice(0, maxLen).replace(/\s+\S*$/, '') + ' …';
+}
 
 /** Beschrijf een onbekende fout-waarde als string. Supabase PostgrestError is geen
  *  Error-instance; zonder deze helper toont de UI "[object Object]". */
@@ -1237,98 +1260,118 @@ export default function Zoeken() {
             })()}
 
             {/* ── Tab: Verklaringen ── */}
-            {textTab === 'verklaringen' && (
-              textCommentaries.length === 0 ? (
-                <div className="empty-text">Geen verklaringen gevonden.</div>
-              ) : (
+            {textTab === 'verklaringen' && (() => {
+              if (textCommentaries.length === 0) {
+                return <div className="empty-text">Geen verklaringen gevonden.</div>;
+              }
+              type CommGroup = { author: CommentaryWithAuthor['authors']; items: CommentaryWithAuthor[] };
+              const byAuthor = new Map<string, CommGroup>();
+              for (const c of textCommentaries) {
+                const key = c.authors?.name || 'Onbekend';
+                if (!byAuthor.has(key)) byAuthor.set(key, { author: c.authors, items: [] });
+                byAuthor.get(key)!.items.push(c);
+              }
+              const groups = Array.from(byAuthor.entries())
+                .sort((a, b) => (a[1].author?.born_year || 9999) - (b[1].author?.born_year || 9999));
+              return (
                 <>
                   <div className="tr-tab-subtitle">
-                    {textCommTotal} verklaringen met "{query.trim()}"
+                    "{query.trim()}" — {textCommTotal} keer in verklaringen
                     {textCommentaries.length < textCommTotal && <span className="tr-shown"> (eerste {textCommentaries.length} getoond)</span>}
                   </div>
-                  {textCommentaries.map((item) => {
-                    const isExp = expanded[item.id];
-                    const text = item.commentary_text || '';
-                    const preview = truncate(text, 200);
-                    const authorName = item.authors?.name || 'Onbekend';
-                    const years = item.authors?.born_year
-                      ? `${item.authors.born_year}\u2013${item.authors.died_year || '?'}` : '';
-                    const era = item.authors?.era;
+                  {groups.map(([authorName, group]) => {
+                    const groupKey = `comm-${authorName}`;
+                    const isCollapsed = textCollapsed[groupKey] !== false && group.items.length > 3;
+                    const shown = isCollapsed ? group.items.slice(0, 3) : group.items;
                     return (
-                      <div key={item.id} className={`commentary-card${isExp ? ' print-show' : ''}`} {...clickable(() => toggleExpand(item.id), { expanded: isExp, label: `Verklaring van ${authorName} uitklappen` })}>
-                        <div className="commentary-header">
-                          <span className="author-name">{authorName}</span>
-                          {years && <span className="author-years">{years}</span>}
-                          {item.year_written && <span className="year-badge">{item.year_written}</span>}
-                          {era && <span className="author-era" style={{ color: ERA_COLORS[era] }}>{era}</span>}
+                      <div key={groupKey} className="tr-book-group">
+                        <div className="tr-book-header">
+                          <span className="tr-book-name">{authorName}</span>
+                          <span className="tr-book-count">{group.items.length}×</span>
                         </div>
-                        <div className="commentary-text">
-                          {isExp
-                            ? splitIntoParagraphs(text).map((para, pi) => (
-                                <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
-                              ))
-                            : expandInlineRefs(preview)
-                          }
-                        </div>
-                        {text.length > 200 && (
-                          <div className="expand-hint">{isExp ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}</div>
+                        {shown.map((item) => {
+                          const text = sanitizeContent(item.commentary_text || '');
+                          const snippet = snippetAround(text, query.trim(), 140);
+                          const ref = item.year_written ? String(item.year_written) : '';
+                          return (
+                            <Link
+                              key={item.id}
+                              to={`/boeklezer/${item.author_id}?commentaryId=${item.id}&verseId=${item.verse_id}`}
+                              className="text-result-item"
+                            >
+                              {ref && <span className="text-result-ref">{ref}</span>}
+                              <span className="text-result-text">{snippet}</span>
+                            </Link>
+                          );
+                        })}
+                        {group.items.length > 3 && (
+                          <button className="tr-show-more" onClick={() => setTextCollapsed(prev => ({ ...prev, [groupKey]: isCollapsed ? false : true }))}>
+                            {isCollapsed ? `Alle ${group.items.length} tonen ▾` : 'Minder tonen ▴'}
+                          </button>
                         )}
                       </div>
                     );
                   })}
                 </>
-              )
-            )}
+              );
+            })()}
 
             {/* ── Tab: Preken ── */}
-            {textTab === 'preken' && (
-              textSermons.length === 0 ? (
-                <div className="empty-text">Geen preken gevonden.</div>
-              ) : (
+            {textTab === 'preken' && (() => {
+              if (textSermons.length === 0) {
+                return <div className="empty-text">Geen preken gevonden.</div>;
+              }
+              type SermonGroup = { author: SermonSearchRow['authors']; items: SermonSearchRow[] };
+              const byAuthor = new Map<string, SermonGroup>();
+              for (const s of textSermons) {
+                const key = s.authors?.name || 'Onbekend';
+                if (!byAuthor.has(key)) byAuthor.set(key, { author: s.authors, items: [] });
+                byAuthor.get(key)!.items.push(s);
+              }
+              const groups = Array.from(byAuthor.entries())
+                .sort((a, b) => (a[1].author?.born_year || 9999) - (b[1].author?.born_year || 9999));
+              return (
                 <>
                   <div className="tr-tab-subtitle">
-                    {textSermonTotal} preken met "{query.trim()}"
+                    "{query.trim()}" — {textSermonTotal} keer in preken
                     {textSermons.length < textSermonTotal && <span className="tr-shown"> (eerste {textSermons.length} getoond)</span>}
                   </div>
-                  {textSermons.map((s) => {
-                    const isExp = expanded[s.id];
-                    const text = s.sermon_text || '';
-                    const preview = truncate(text, 250);
-                    const authorName = s.authors?.name || 'Onbekend';
-                    const years = s.authors?.born_year
-                      ? `${s.authors.born_year}\u2013${s.authors.died_year || '?'}` : '';
-                    const era = s.authors?.era;
+                  {groups.map(([authorName, group]) => {
+                    const groupKey = `serm-${authorName}`;
+                    const isCollapsed = textCollapsed[groupKey] !== false && group.items.length > 3;
+                    const shown = isCollapsed ? group.items.slice(0, 3) : group.items;
                     return (
-                      <div key={s.id} className="commentary-card" {...clickable(() => toggleExpand(s.id), { expanded: isExp, label: `Preek van ${authorName} uitklappen` })}>
-                        <div className="commentary-header">
-                          <span className="author-name">{authorName}</span>
-                          {years && <span className="author-years">{years}</span>}
-                          {era && <span className="author-era" style={{ color: ERA_COLORS[era] }}>{era}</span>}
+                      <div key={groupKey} className="tr-book-group">
+                        <div className="tr-book-header">
+                          <span className="tr-book-name">{authorName}</span>
+                          <span className="tr-book-count">{group.items.length}×</span>
                         </div>
-                        <div className="sermon-title-row">
-                          <span className="sermon-title">{s.title}</span>
-                          {s.year_preached && <span className="year-badge">{s.year_preached}</span>}
-                        </div>
-                        <div className="commentary-text">
-                          {isExp
-                            ? splitIntoParagraphs(text).map((para, pi) => (
-                                <p key={pi} className="comm-para">{expandInlineRefs(para)}</p>
-                              ))
-                            : expandInlineRefs(preview)
-                          }
-                        </div>
-                        {text.length > 250 && (
-                          <div className="expand-hint">{isExp ? 'Inklappen \u25B2' : 'Lees meer \u25BC'}</div>
+                        {shown.map((s) => {
+                          const text = s.sermon_text || '';
+                          const snippet = snippetAround(text, query.trim(), 140);
+                          const ref = s.year_preached ? String(s.year_preached) : '';
+                          return (
+                            <Link
+                              key={s.id}
+                              to={`/preek/${s.id}`}
+                              className="text-result-item"
+                            >
+                              {ref && <span className="text-result-ref">{ref}</span>}
+                              <span className="text-result-text">{snippet}</span>
+                            </Link>
+                          );
+                        })}
+                        {group.items.length > 3 && (
+                          <button className="tr-show-more" onClick={() => setTextCollapsed(prev => ({ ...prev, [groupKey]: isCollapsed ? false : true }))}>
+                            {isCollapsed ? `Alle ${group.items.length} tonen ▾` : 'Minder tonen ▴'}
+                          </button>
                         )}
-                        <Link to={`/preek/${s.id}`} className="bl-read-link" onClick={e => e.stopPropagation()}>
-                          Lees volledige preek →
-                        </Link>
                       </div>
                     );
                   })}
                 </>
-              )
-            )}
+              );
+            })()}
           </div>
         )}
 
