@@ -3,6 +3,18 @@
 // Required Supabase secrets: MOLLIE_API_KEY
 //
 // Deploy: supabase functions deploy donation-webhook --no-verify-jwt
+//
+// Authentication model (security audit M-3):
+//   Mollie does NOT sign webhooks and explicitly recommends AGAINST
+//   whitelisting their IP addresses, since they change. The canonical
+//   mitigation is what we already do:
+//     1. Validate the body has a tr_-formatted id
+//     2. Confirm the id maps to a row we created (DB gate)
+//     3. Re-fetch the actual status from api.mollie.com using our key
+//        (the body itself is never trusted for state)
+//     4. Per-IP rate limit on this function so flooding tr_-IDs cannot
+//        burn Mollie API quota.
+//   See docs.mollie.com/payments/status-changes — "do not whitelist".
 
 // @ts-ignore - deno
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';

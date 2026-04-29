@@ -22,6 +22,25 @@ interface CreateBody {
   amount?: string;
   name?: string | null;
   message?: string | null;
+  captchaToken?: string | null;
+}
+
+// Cloudflare Turnstile verify (security audit M-4 captcha). Skipped silently
+// when no TURNSTILE_SECRET is configured so the function still works pre-
+// signup; once the secret is set, every request must carry a valid token.
+async function verifyTurnstile(token: string | null | undefined, ip: string): Promise<boolean> {
+  const secret = Deno.env.get('TURNSTILE_SECRET');
+  if (!secret) return true;
+  if (!token) return false;
+  const form = new URLSearchParams({ secret, response: token, remoteip: ip });
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
+  });
+  if (!res.ok) return false;
+  const json = await res.json();
+  return json?.success === true;
 }
 
 function clientIp(req: Request): string {
@@ -62,6 +81,11 @@ serve(async (req) => {
 
   let body: CreateBody;
   try { body = await req.json(); } catch { return json({ error: 'invalid_json' }, 400); }
+
+  // Verify Turnstile token before doing any further work / hitting Mollie.
+  if (!(await verifyTurnstile(body.captchaToken, ip))) {
+    return json({ error: 'captcha_failed' }, 403);
+  }
 
   const amountNum = parseFloat(String(body.amount ?? '').replace(',', '.'));
   if (!Number.isFinite(amountNum) || amountNum < 1 || amountNum > 5000) {

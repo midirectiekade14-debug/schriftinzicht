@@ -1,13 +1,21 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import Dashboard from './admin/Dashboard';
-import Authors from './admin/Authors';
-import Content from './admin/Content';
-import Confessions from './admin/Confessions';
-import Catechism from './admin/Catechism';
-import LiveEditor from './admin/LiveEditor';
+
+// Admin sub-pages are lazy-loaded so non-admins never download the
+// LiveEditor / Authors / Content / Confessions / Catechism bundles
+// (security audit M-2 close — defence-in-depth on top of RLS).
+// The chunks are only fetched after the server-side is_admin() RPC has
+// confirmed the user. A non-admin who navigates to /beheer gets the
+// Admin shell (which holds only the auth check + redirect) and is
+// bounced before any admin code is fetched.
+const Dashboard  = lazy(() => import('./admin/Dashboard'));
+const Authors    = lazy(() => import('./admin/Authors'));
+const Content    = lazy(() => import('./admin/Content'));
+const Confessions = lazy(() => import('./admin/Confessions'));
+const Catechism  = lazy(() => import('./admin/Catechism'));
+const LiveEditor = lazy(() => import('./admin/LiveEditor'));
 
 type Section = 'dashboard' | 'live' | 'authors' | 'content' | 'confessions' | 'catechism';
 
@@ -73,12 +81,14 @@ export default function Admin() {
         </nav>
 
         <main className="adm-main">
-          {section === 'dashboard' && <Dashboard />}
-          {section === 'live' && <LiveEditor />}
-          {section === 'authors' && <Authors />}
-          {section === 'content' && <Content />}
-          {section === 'confessions' && <Confessions />}
-          {section === 'catechism' && <Catechism />}
+          <Suspense fallback={<div className="adm-loading"><div className="spinner" /></div>}>
+            {section === 'dashboard' && <Dashboard />}
+            {section === 'live' && <LiveEditor />}
+            {section === 'authors' && <Authors />}
+            {section === 'content' && <Content />}
+            {section === 'confessions' && <Confessions />}
+            {section === 'catechism' && <Catechism />}
+          </Suspense>
         </main>
       </div>
     </div>
