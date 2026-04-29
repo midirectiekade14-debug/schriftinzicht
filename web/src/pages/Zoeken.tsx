@@ -603,6 +603,8 @@ export default function Zoeken() {
         }
       } catch (err) {
         const msg = describeError(err);
+        // Log full detail server-side; show generic copy so Postgres hints /
+        // schema names don't leak (security audit L-2).
         console.error('[Zoeken] tekst-zoekopdracht faalde:', msg, err);
         const isNetwork = /failed to fetch|network|offline/i.test(msg);
         const isTimeout = /timeout|57014/i.test(msg);
@@ -610,7 +612,7 @@ export default function Zoeken() {
           ? 'Geen verbinding met de zoekserver. Controleer je internetverbinding en probeer het opnieuw.'
           : isTimeout
           ? 'De zoekopdracht duurde te lang. Probeer een specifiekere zoekterm.'
-          : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
+          : 'Fout bij het zoeken. Probeer een andere zoekterm of probeer het later opnieuw.');
       } finally {
         setLoading(false);
       }
@@ -710,11 +712,12 @@ export default function Zoeken() {
       setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
     } catch (err) {
       const msg = describeError(err);
+      // Log full detail server-side; show generic copy (security audit L-2).
       console.error('[Zoeken] verwijzing-zoekopdracht faalde:', msg, err);
       const isNetwork = /failed to fetch|network|offline/i.test(msg);
       setError(isNetwork
         ? 'Geen verbinding met de server. Controleer je internetverbinding en probeer het opnieuw.'
-        : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
+        : 'Fout bij het zoeken. Probeer het later opnieuw.');
     } finally {
       setLoading(false);
     }
