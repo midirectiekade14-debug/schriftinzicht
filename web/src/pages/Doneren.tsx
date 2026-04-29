@@ -50,7 +50,7 @@ export default function Doneren() {
         <h1>Steun SchriftInzicht</h1>
       </div>
       <div className="page doneren-page">
-        <p className="doneren-lead">Help ons vier eeuwen bijbelverklaring beschikbaar te houden</p>
+        <p className="doneren-lead">Help ons vier eeuwen bijbelverklaring inzichtelijk te maken</p>
 
         <section className="doneren-intro">
           <p>
@@ -58,11 +58,6 @@ export default function Doneren() {
             oude geschriften van puriteinen, oudvaders en kerkvaders worden gedigitaliseerd, ontleed
             en doorzoekbaar gemaakt — preken van Calvijn, kanttekeningen, catechismus-uitleg en
             klassieke bijbelverklaringen op één plek.
-          </p>
-          <p>
-            Het opzetten en onderhouden kost tijd, geduld en geld: serverkosten, database-opslag,
-            OCR-pipelines en eindeloos uren correctiewerk. Geen abonnementen, geen advertenties.
-            Wat hier staat moet vrij blijven voor iedereen die de Schrift wil onderzoeken.
           </p>
           <p className="doneren-thanks">
             Een eenmalige bijdrage — groot of klein — helpt enorm.<br />
@@ -124,7 +119,7 @@ export default function Doneren() {
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Een gebed, gedachte of opmerking…"
+              placeholder="Een wens, gedachte of opmerking…"
               rows={3}
               maxLength={500}
             />
@@ -135,11 +130,11 @@ export default function Doneren() {
           <button type="submit" className="doneren-submit" disabled={loading || activeAmount() < 1}>
             {loading
               ? 'Bezig…'
-              : `Doneer € ${activeAmount().toFixed(2).replace('.', ',')} via Mollie`}
+              : `Doneer € ${activeAmount().toFixed(2).replace('.', ',')} aan SchriftInzicht`}
           </button>
 
           <p className="doneren-secure">
-            Betaling verloopt veilig via Mollie. Mogelijk: iDEAL, creditcard, Bancontact, PayPal en meer.
+            Betaling loopt veilig via Mollie Payments.
           </p>
         </form>
       </div>
