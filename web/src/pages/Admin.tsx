@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -8,8 +8,6 @@ import Content from './admin/Content';
 import Confessions from './admin/Confessions';
 import Catechism from './admin/Catechism';
 import LiveEditor from './admin/LiveEditor';
-
-const ADMIN_EMAILS = ['harm@maatwerkinterieurs.info'];
 
 type Section = 'dashboard' | 'live' | 'authors' | 'content' | 'confessions' | 'catechism';
 
@@ -25,10 +23,24 @@ const NAV_ITEMS: { key: Section; label: string; icon: string }[] = [
 export default function Admin() {
   const { user, isLoggedIn, loading: authLoading } = useAuth();
   const [section, setSection] = useState<Section>('dashboard');
+  // Admin check is done server-side via the is_admin() SECURITY DEFINER
+  // function so the client cannot lie about its role (security audit M-1).
+  // The earlier hardcoded email allowlist also leaked the owner's address
+  // into the public bundle (I-1) — removed here.
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
-  const isAdmin = isLoggedIn && ADMIN_EMAILS.includes(user?.email || '');
+  useEffect(() => {
+    if (!isLoggedIn) { setIsAdmin(false); return; }
+    let cancelled = false;
+    supabase.rpc('is_admin').then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) { setIsAdmin(false); return; }
+      setIsAdmin(data === true);
+    });
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
 
-  if (authLoading) return <div className="adm-loading"><div className="spinner" /></div>;
+  if (authLoading || isAdmin === null) return <div className="adm-loading"><div className="spinner" /></div>;
   if (!isLoggedIn) return <Navigate to="/inloggen?return=/beheer" replace />;
   if (!isAdmin) return <Navigate to="/zoeken" replace />;
 
