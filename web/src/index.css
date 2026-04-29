@@ -158,10 +158,14 @@ select:focus-visible {
 .page {
   flex: 1;
   overflow-y: auto;
-  padding: var(--sp-md);
-  max-width: 640px;
+  /* Vul de hele breedte van .app-main zodat wheel-events ook in de
+     "gutter" naast de leeskolom worden ontvangen. Inhoud blijft op
+     640px gecentreerd via padding-inline. */
+  padding-block: var(--sp-md);
+  padding-inline: max(var(--sp-md), calc((100% - 640px) / 2));
+  max-width: none;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* Screen Header */
