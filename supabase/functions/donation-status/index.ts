@@ -17,12 +17,40 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+function clientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  return req.headers.get('cf-connecting-ip')
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   const mollieKey = Deno.env.get('MOLLIE_API_KEY');
   if (!mollieKey) return json({ error: 'not_configured' }, 500);
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  // Per-IP rate limit (security audit M-4): donation-status hits Mollie's API
+  // so an enumeration on tr_* IDs would burn quota. 30/min/IP is generous for
+  // the bedankt-page polling (one user refreshing 5x is well within budget).
+  const ip = clientIp(req);
+  const { data: allowed, error: rateError } = await supabase.rpc('check_rate_limit', {
+    p_key: `donation-status:${ip}`,
+    p_limit: 30,
+    p_window_seconds: 60,
+  });
+  if (rateError) {
+    console.error('check_rate_limit failed (allowing to avoid lock-out):', rateError);
+  } else if (allowed === false) {
+    return json({ error: 'rate_limited', retryAfter: 60 }, 429);
+  }
 
   let paymentId: string | undefined;
   try {
@@ -35,10 +63,6 @@ serve(async (req) => {
   }
 
   // Gate 1: alleen status teruggeven voor donaties die we zelf hebben aangemaakt.
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
   const { data: row } = await supabase.from('donations').select('mollie_id').eq('mollie_id', paymentId).maybeSingle();
   if (!row) return json({ error: 'not_found' }, 404);
 

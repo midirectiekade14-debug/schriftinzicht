@@ -2,14 +2,43 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 /**
- * EditOverlay — activated via ?edit=1 URL param.
- * Adds click handlers on [data-edit-table] elements that send postMessage to parent (admin iframe).
- * Shows a floating "EDIT MODE" indicator.
+ * EditOverlay — activated via ?edit=1 URL param AND a parent-window handshake.
+ *
+ * The handshake (security audit L-3) prevents the edit-mode UI from breaking
+ * the page when a casual visitor lands on a shared `?edit=1` link. The page
+ * announces si-edit-ready to its parent on mount; the parent (admin tooling)
+ * must reply with si-edit-on before clicks/hover are intercepted. Cross-origin
+ * messages are dropped by the browser because targetOrigin = own origin.
+ *
+ * Adds click handlers on [data-edit-table] elements that send postMessage to
+ * the parent admin iframe.
  */
 export default function EditOverlay() {
   const [searchParams] = useSearchParams();
-  const editMode = searchParams.get('edit') === '1';
+  const editRequested = searchParams.get('edit') === '1';
   const [, setHovered] = useState<HTMLElement | null>(null);
+  // editMode = parent has confirmed it's an admin context.
+  const [editMode, setEditMode] = useState(false);
+
+  // Handshake: ask parent to confirm; only flip to edit-mode if it replies.
+  useEffect(() => {
+    if (!editRequested) return;
+    if (window.parent === window) {
+      // Not in an iframe — there's no admin parent to authorise editing.
+      return;
+    }
+
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === 'si-edit-on') setEditMode(true);
+      if (e.data?.type === 'si-edit-off') setEditMode(false);
+    }
+    window.addEventListener('message', onMessage);
+    // Tell the parent we're ready and waiting for its si-edit-on.
+    window.parent.postMessage({ type: 'si-edit-ready' }, window.location.origin);
+
+    return () => window.removeEventListener('message', onMessage);
+  }, [editRequested]);
 
   useEffect(() => {
     if (!editMode) return;

@@ -24,6 +24,14 @@ interface CreateBody {
   message?: string | null;
 }
 
+function clientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  return req.headers.get('cf-connecting-ip')
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -31,6 +39,26 @@ serve(async (req) => {
   const mollieKey = Deno.env.get('MOLLIE_API_KEY');
   const siteUrl = Deno.env.get('SITE_URL') ?? 'https://schriftinzicht.nl';
   if (!mollieKey) return json({ error: 'mollie_not_configured' }, 500);
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Per-IP rate limit (security audit M-4): no captcha vendor wired up yet,
+  // so this is the only thing standing between us and a bot flooding the
+  // Mollie API and filling the donations table. Tight by design — a real
+  // user only triggers donation-create once or twice per page visit.
+  const ip = clientIp(req);
+  const { data: allowed, error: rateError } = await supabase.rpc('check_rate_limit', {
+    p_key: `donation-create:${ip}`,
+    p_limit: 5,
+    p_window_seconds: 60,
+  });
+  if (rateError) {
+    console.error('check_rate_limit failed (allowing to avoid lock-out):', rateError);
+  } else if (allowed === false) {
+    return json({ error: 'rate_limited', retryAfter: 60 }, 429);
+  }
 
   let body: CreateBody;
   try { body = await req.json(); } catch { return json({ error: 'invalid_json' }, 400); }
@@ -43,10 +71,6 @@ serve(async (req) => {
 
   const donorName = (body.name ?? '').toString().slice(0, 80) || null;
   const donorMessage = (body.message ?? '').toString().slice(0, 500) || null;
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   const webhookUrl = `${supabaseUrl}/functions/v1/donation-webhook`;
   const redirectUrl = `${siteUrl}/doneren/bedankt`;
