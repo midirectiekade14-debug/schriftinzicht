@@ -1200,15 +1200,19 @@ select:focus-visible {
 .settings-section {
   background: var(--surface);
   border: 1px solid var(--surface-border);
-  border-radius: 16px;
-  padding: var(--sp-md);
-  margin-bottom: var(--sp-md);
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  margin-bottom: 14px;
+  font-family: var(--font-sans);
 }
 
 .settings-section h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: var(--sp-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 10px;
   font-family: var(--font-sans);
 }
 
@@ -1216,24 +1220,40 @@ select:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--sp-sm) 0;
+  gap: var(--sp-md);
+  padding: 11px 0;
   border-bottom: 1px solid var(--surface-border);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 14.5px;
+  color: var(--text);
+}
+.setting-row:last-child {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+.setting-row:first-of-type {
+  padding-top: 4px;
 }
 
 .setting-value {
-  font-size: 14px;
-  color: var(--text-faint);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sec);
+  background: rgba(196,149,106,0.08);
+  border: 1px solid var(--surface-border);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .settings-logout {
   width: 100%;
-  margin-top: var(--sp-sm);
-  padding: 10px;
+  margin-top: 12px;
+  padding: 11px;
   background: none;
   border: 1px solid var(--surface-border);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text-muted);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -1247,17 +1267,17 @@ select:focus-visible {
 }
 
 .about-text {
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--text-sec);
-  line-height: 1.7;
-  margin-top: var(--sp-sm);
-  font-family: var(--font-serif);
+  line-height: 1.6;
+  margin-top: 4px;
+  font-family: var(--font-sans);
 }
 
 .source-text {
   font-size: 14px;
   color: var(--text-sec);
-  line-height: 1.7;
+  line-height: 1.9;
   font-family: var(--font-sans);
 }
 
@@ -1265,13 +1285,15 @@ select:focus-visible {
   font-size: 12px;
   color: var(--text-faint);
   font-style: italic;
-  margin-top: var(--sp-sm);
+  margin-top: 10px;
+  font-family: var(--font-sans);
 }
 
 .link {
   color: var(--accent);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 14.5px;
+  font-weight: 500;
   font-family: var(--font-sans);
 }
 
@@ -1931,14 +1953,18 @@ a.preek-badge:hover {
   font-size: 14px;
   font-style: italic;
   color: var(--parch-accent);
+  background: rgba(139,69,19,0.06);
+  border: 1px solid rgba(139,69,19,0.15);
   margin-top: 12px;
   text-decoration: none;
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
-  transition: background 0.15s;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 .preek-cover-verse:hover {
-  background: rgba(139,69,19,0.08);
+  background: rgba(139,69,19,0.12);
+  border-color: rgba(139,69,19,0.25);
 }
 
 /* Responsive */
@@ -3757,12 +3783,23 @@ a.preek-badge:hover {
 }
 
 .bl-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--accent);
   text-decoration: none;
-  font-size: 18px;
-  font-weight: 300;
-  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  padding: 4px 10px 4px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
   line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+.bl-back:hover {
+  background: rgba(196,149,106,0.10);
+  border-color: rgba(196,149,106,0.25);
 }
 
 .bl-header-title {
@@ -5815,6 +5852,7 @@ a.pv-kant-verse:hover {
 .ov-work-item {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: var(--sp-sm);
   padding: 8px 12px;
   background: var(--surface);
@@ -5834,6 +5872,15 @@ a.pv-kant-verse:hover {
 .ov-work-year {
   font-size: 12px;
   color: var(--text-muted);
+}
+.ov-work-preview {
+  flex-basis: 100%;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-top: 2px;
 }
 .ov-work-meta {
   display: flex;

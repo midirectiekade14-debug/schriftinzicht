@@ -39,6 +39,41 @@ function cleanTitle(t: string): string {
   return s;
 }
 
+/** True wanneer de "title" in werkelijkheid de eerste zin van een hoofdstuk is.
+ *  Heuristiek: heel lang en stopt zonder zinsteken, of begint met onderdeel-marker
+ *  met daarna een lopende lopende zin.
+ */
+function looksLikeFragment(t: string): boolean {
+  if (!t) return false;
+  const s = t.trim();
+  if (s.length > 80) return true;
+  if (/[,;]$/.test(s)) return true;
+  const lastChar = s.slice(-1);
+  if (s.length > 50 && !'.!?'.includes(lastChar) && /[a-z]/.test(lastChar)) return true;
+  return false;
+}
+
+/** Render-helper voor hoofdstuk-achtige items in een bundel:
+ *  - Echte titels worden alleen genormaliseerd
+ *  - Fragmentaire titels worden "Hoofdstuk N — preview" met positie binnen de bundel
+ */
+function formatChapterTitle(rawTitle: string, position: number): { label: string; preview?: string } {
+  const cleaned = cleanTitle(rawTitle);
+  if (!looksLikeFragment(cleaned)) {
+    return { label: cleaned };
+  }
+  // Strip eventuele lossen leading nummering die nog overgebleven is
+  const previewSrc = cleaned.replace(/^\d+[.)]\s*/, '').trim();
+  // Knip op een woordgrens rond ~55 chars
+  let preview = previewSrc;
+  if (preview.length > 55) {
+    const cut = preview.slice(0, 55);
+    const lastSpace = cut.lastIndexOf(' ');
+    preview = (lastSpace > 30 ? cut.slice(0, lastSpace) : cut).trim() + '…';
+  }
+  return { label: `Hoofdstuk ${position}`, preview };
+}
+
 const ERA_COLORS: Record<string, string> = {
   'Kerkvaders': 'var(--era-kerkvaders)',
   'Reformatie': 'var(--era-reformatie)',
@@ -211,15 +246,27 @@ export default function Oudvaders() {
                                 const collKey = `${a.id}-${coll}`;
                                 const isCollOpen = sermonsExpanded[collKey];
                                 const shown = isCollOpen ? items : items.slice(0, 3);
+                                // Detecteer of de bundel hoofdstuk-fragmenten bevat (de meerderheid is fragmentair)
+                                const fragmentCount = items.filter(s => looksLikeFragment(cleanTitle(s.title))).length;
+                                const isChapterBundle = fragmentCount >= Math.ceil(items.length / 2);
                                 return (
                                   <div key={coll} className="ov-coll-group">
                                     <div className="ov-coll-title">{coll} ({items.length})</div>
-                                    {shown.map(s => (
-                                      <Link key={s.id} to={`/preek/${s.id}`} className="ov-work-item">
-                                        <span className="ov-work-title">{truncate(cleanTitle(s.title), 60)}</span>
-                                        {s.year_preached && <span className="ov-work-year">{s.year_preached}</span>}
-                                      </Link>
-                                    ))}
+                                    {shown.map((s, idx) => {
+                                      // Positie binnen de volledige bundel (1-based) voor "Hoofdstuk N"
+                                      const fullIdx = items.indexOf(s);
+                                      const position = fullIdx >= 0 ? fullIdx + 1 : idx + 1;
+                                      const formatted = isChapterBundle
+                                        ? formatChapterTitle(s.title, position)
+                                        : { label: truncate(cleanTitle(s.title), 60) };
+                                      return (
+                                        <Link key={s.id} to={`/preek/${s.id}`} className="ov-work-item">
+                                          <span className="ov-work-title">{formatted.label}</span>
+                                          {formatted.preview && <span className="ov-work-preview">{formatted.preview}</span>}
+                                          {s.year_preached && <span className="ov-work-year">{s.year_preached}</span>}
+                                        </Link>
+                                      );
+                                    })}
                                     {items.length > 3 && (
                                       <button
                                         className="ov-works-toggle ov-sermon-toggle"

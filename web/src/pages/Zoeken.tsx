@@ -555,8 +555,13 @@ export default function Zoeken() {
         if (!textResults.length && !textCommentaries.length && !textSermons.length) {
           setError(`Geen resultaten gevonden voor "${q.trim()}". Probeer een andere spelling, een synoniem, of zoek op bijbelverwijzing (bijv. "Rom 8:28").`);
         }
-      } catch {
-        setError('Fout bij het zoeken.');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[Zoeken] tekst-zoekopdracht faalde:', err);
+        const isNetwork = /failed to fetch|network|offline/i.test(msg);
+        setError(isNetwork
+          ? 'Geen verbinding met de zoekserver. Controleer je internetverbinding en probeer het opnieuw.'
+          : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
       } finally {
         setLoading(false);
       }
@@ -654,8 +659,13 @@ export default function Zoeken() {
       });
       setKanttekeningen(kantData);
       setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
-    } catch {
-      setError('Fout bij het zoeken. Controleer je internetverbinding.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Zoeken] verwijzing-zoekopdracht faalde:', err);
+      const isNetwork = /failed to fetch|network|offline/i.test(msg);
+      setError(isNetwork
+        ? 'Geen verbinding met de server. Controleer je internetverbinding en probeer het opnieuw.'
+        : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
     } finally {
       setLoading(false);
     }

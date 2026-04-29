@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { truncate } from '../lib/truncate';
 import { ERA_COLORS } from '../lib/constants';
@@ -300,6 +300,8 @@ function renderBookBlock(block: string, idx: number) {
 export default function Boeklezer() {
   const { authorId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const filterBook = searchParams.get('boek');
   const filterChapter = searchParams.get('hfst');
   const deepVerseId = searchParams.get('verseId');
@@ -310,6 +312,17 @@ export default function Boeklezer() {
   const backTarget = (fromSource === 'pv' && !isNativeWebView)
     ? `/preekvoorbereiding${fromQuery ? `?q=${encodeURIComponent(fromQuery)}` : ''}`
     : '/oudvaders';
+
+  // Prefer browser back when there's app history; else fall back to a sensible target.
+  // location.key === 'default' means: no prior in-app navigation (direct load / refresh).
+  const handleBack = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location.key && location.key !== 'default') {
+      navigate(-1);
+    } else {
+      navigate(backTarget);
+    }
+  }, [navigate, location.key, backTarget]);
 
   const [author, setAuthor] = useState<AuthorInfo | null>(null);
   const [sourceWorks, setSourceWorks] = useState<SourceWork[]>([]);
@@ -772,7 +785,7 @@ export default function Boeklezer() {
     return (
       <div className="bl-layout">
         <div className="bl-header-bar">
-          <Link to={backTarget} className="bl-back">{'\u2039'} Terug</Link>
+          <Link to={backTarget} className="bl-back" onClick={handleBack}>{'\u2039'} Terug</Link>
           <span className="bl-header-title">Boeklezer</span>
         </div>
         <div className="bl-center"><div className="loader"><div className="spinner" /></div></div>
@@ -784,7 +797,7 @@ export default function Boeklezer() {
     return (
       <div className="bl-layout">
         <div className="bl-header-bar">
-          <Link to={backTarget} className="bl-back">{'\u2039'} Terug</Link>
+          <Link to={backTarget} className="bl-back" onClick={handleBack}>{'\u2039'} Terug</Link>
           <span className="bl-header-title">Boeklezer</span>
         </div>
         <div className="bl-center"><div className="error-box">{error}</div></div>
@@ -800,7 +813,7 @@ export default function Boeklezer() {
     <div className="bl-layout">
       {/* Compact header */}
       <div className="bl-header-bar">
-        <Link to={backTarget} className="bl-back">{'\u2039'}</Link>
+        <Link to={backTarget} className="bl-back" onClick={handleBack} aria-label="Terug">{'\u2039'} Terug</Link>
 
         {sourceWorks.length > 1 && (
           <select
