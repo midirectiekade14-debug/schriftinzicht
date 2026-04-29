@@ -7,6 +7,12 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0C0A09" />
+    <!-- Security hardening (per audit M-5). GitHub Pages cannot set custom HTTP
+         headers; the Strict-Transport-Security and X-Frame-Options gaps remain
+         and require fronting with Cloudflare to close them fully. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mollie.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; worker-src 'self'; object-src 'none'" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta name="description" content="Vier eeuwen bijbelverklaring in één app. Van Luther tot Spurgeon — ontdek wat de oudvaders schreven bij elk vers van de Bijbel." />
     <meta property="og:title" content="SchriftInzicht — Bijbelverklaringen van de Oudvaders" />
     <meta property="og:description" content="Vergelijk bijbelverklaringen van 16 theologen op een chronologische tijdlijn." />
@@ -51,7 +57,7 @@
         }).catch(function() {});
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-BThJaztb.js"></script>
+    <script type="module" crossorigin src="/assets/index-DJz2XR_x.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/vendor-I3Hf9KbK.js">
     <link rel="modulepreload" crossorigin href="/assets/supabase-CpRTRdvQ.js">
     <link rel="stylesheet" crossorigin href="/assets/index-LGgp21ux.css">
