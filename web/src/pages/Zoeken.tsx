@@ -12,6 +12,23 @@ import { ERA_COLORS, dedupeCommentariesByAuthorVerse, type CommentaryWithAuthor 
 import { getStorage, setStorage } from '../lib/storage';
 import { clickable } from '../lib/a11y';
 
+/** Beschrijf een onbekende fout-waarde als string. Supabase PostgrestError is geen
+ *  Error-instance; zonder deze helper toont de UI "[object Object]". */
+function describeError(err: unknown): string {
+  if (!err) return 'onbekende fout';
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object') {
+    const e = err as Record<string, unknown>;
+    if (typeof e.message === 'string' && e.message) return e.message;
+    if (typeof e.details === 'string' && e.details) return e.details;
+    if (typeof e.hint === 'string' && e.hint) return e.hint;
+    if (typeof e.code === 'string' && e.code) return `code ${e.code}`;
+    try { return JSON.stringify(err); } catch { /* fallthrough */ }
+  }
+  return String(err);
+}
+
 /** Glue OCR word-break fragments back together.
  *  PDF OCR sometimes splits the first letter of a word onto its own paragraph
  *  (e.g. ["...hun werd.", "W", "at een zelfvernedering..."]). Merge orphans. */
@@ -490,16 +507,22 @@ export default function Zoeken() {
       }
 
       try {
+        // Voor full-text gebruiken we Postgres tsvector-indexen (idx_verses_fulltext,
+        // idx_commentaries_fulltext, idx_sermons_fulltext) — ILIKE op long-text kolommen
+        // veroorzaakt anders een statement_timeout. textSearch() bouwt een websearch-tsquery
+        // dat die GIN-indexen kan gebruiken.
+        const tsQuery = q.trim();
+        const ftConfig = { type: 'websearch' as const, config: 'dutch' };
         // Parallel: count+fetch verses, commentaries, sermons
         const [verseCount, versesRes, commCount, commRes, sermonCount, sermonRes] = await Promise.all([
           supabase
             .from('bible_verses')
             .select('id', { count: 'exact', head: true })
-            .ilike('text_sv', `%${q.trim()}%`),
+            .textSearch('text_sv', tsQuery, ftConfig),
           supabase
             .from('bible_verses')
             .select('id, book_id, chapter, verse, text_sv, text_hsv, bible_books(name, abbreviation, testament, book_order)')
-            .ilike('text_sv', `%${q.trim()}%`)
+            .textSearch('text_sv', tsQuery, ftConfig)
             .order('book_id')
             .order('chapter')
             .order('verse')
@@ -507,21 +530,21 @@ export default function Zoeken() {
           supabase
             .from('commentaries')
             .select('id', { count: 'exact', head: true })
-            .ilike('commentary_text', `%${q.trim()}%`),
+            .textSearch('commentary_text', tsQuery, ftConfig),
           supabase
             .from('commentaries')
             .select('id, verse_id, commentary_text, year_written, author_id, source_work_id, language, is_translated, scope, passage_end_verse_id, authors(name, born_year, died_year, era)')
-            .ilike('commentary_text', `%${q.trim()}%`)
+            .textSearch('commentary_text', tsQuery, ftConfig)
             .order('year_written', { ascending: true })
             .limit(100),
           supabase
             .from('sermons')
             .select('id', { count: 'exact', head: true })
-            .ilike('sermon_text', `%${q.trim()}%`),
+            .textSearch('sermon_text', tsQuery, ftConfig),
           supabase
             .from('sermons')
             .select('id, title, year_preached, source_collection, sermon_text, authors(name, born_year, died_year, era)')
-            .ilike('sermon_text', `%${q.trim()}%`)
+            .textSearch('sermon_text', tsQuery, ftConfig)
             .order('year_preached', { ascending: true })
             .limit(100),
         ]);
@@ -556,11 +579,14 @@ export default function Zoeken() {
           setError(`Geen resultaten gevonden voor "${q.trim()}". Probeer een andere spelling, een synoniem, of zoek op bijbelverwijzing (bijv. "Rom 8:28").`);
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error('[Zoeken] tekst-zoekopdracht faalde:', err);
+        const msg = describeError(err);
+        console.error('[Zoeken] tekst-zoekopdracht faalde:', msg, err);
         const isNetwork = /failed to fetch|network|offline/i.test(msg);
+        const isTimeout = /timeout|57014/i.test(msg);
         setError(isNetwork
           ? 'Geen verbinding met de zoekserver. Controleer je internetverbinding en probeer het opnieuw.'
+          : isTimeout
+          ? 'De zoekopdracht duurde te lang. Probeer een specifiekere zoekterm.'
           : `Fout bij het zoeken: ${msg.slice(0, 120)}`);
       } finally {
         setLoading(false);
@@ -660,8 +686,8 @@ export default function Zoeken() {
       setKanttekeningen(kantData);
       setCrossRefs((crossRes.data || []) as unknown as CrossRefRow[]);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[Zoeken] verwijzing-zoekopdracht faalde:', err);
+      const msg = describeError(err);
+      console.error('[Zoeken] verwijzing-zoekopdracht faalde:', msg, err);
       const isNetwork = /failed to fetch|network|offline/i.test(msg);
       setError(isNetwork
         ? 'Geen verbinding met de server. Controleer je internetverbinding en probeer het opnieuw.'
