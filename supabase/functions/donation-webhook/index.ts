@@ -12,11 +12,41 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 // @ts-ignore - deno globals
 declare const Deno: { env: { get(key: string): string | undefined } };
 
+function clientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  return req.headers.get('cf-connecting-ip')
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown';
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') return new Response('method_not_allowed', { status: 405 });
 
   const mollieKey = Deno.env.get('MOLLIE_API_KEY');
   if (!mollieKey) return new Response('not_configured', { status: 500 });
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  // Per-IP rate limit (security audit M-3 partial / M-4): Mollie webhooks
+  // arrive in bursts but never thousands per minute from a single source.
+  // 60/min/IP gives plenty of headroom for legitimate Mollie infra and shuts
+  // down random-tr_-flooding (which would burn quota via the per-id Mollie
+  // GET below) immediately.
+  const ip = clientIp(req);
+  const { data: allowed, error: rateError } = await supabase.rpc('check_rate_limit', {
+    p_key: `donation-webhook:${ip}`,
+    p_limit: 60,
+    p_window_seconds: 60,
+  });
+  if (rateError) {
+    console.error('check_rate_limit failed (allowing to avoid lock-out):', rateError);
+  } else if (allowed === false) {
+    return new Response('rate_limited', { status: 429, headers: { 'Retry-After': '60' } });
+  }
 
   let paymentId: string | null = null;
   const ct = req.headers.get('content-type') ?? '';
@@ -33,10 +63,6 @@ serve(async (req) => {
 
   // Gate: alleen processen voor donaties die we zelf hebben aangemaakt — voorkomt mass-fetch DoS
   // door random tr_-IDs naar onze webhook te sturen.
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
   const { data: row } = await supabase.from('donations').select('mollie_id').eq('mollie_id', paymentId).maybeSingle();
   if (!row) return new Response('not_found', { status: 404 });
 
